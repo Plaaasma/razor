@@ -17,5 +17,6 @@ Standard LTC confirm: 40+0.4s.
 | 8 | 2026-06-12 | Late move reductions | nmp → lmr | [0, 10] | 8+0.08 | 133-120-39 | 2.97 | **PASS** | Elo +116±31, 292 games, 8:20. New master = lmr → tagged v0.3.0 |
 | 9 | 2026-06-12 | LTC confirm: v0.3.0 vs tt-master | fixed 200 games | n/a | 40+0.4 | 159-35-5 | n/a | **CONFIRMED** | 88.7% ≈ +358 Elo at LTC vs STC chain expectation ~+382 for the same five features — gains hold at LTC. v0.3.0 validated |
 | 10 | 2026-06-12 | Aspiration windows | lmr (v0.3.0) → aspiration | [0, 10] | 8+0.08 | 281-462-197 | accepted | **PASS** | Elo +31.1±15.9, 940 games. New master = aspiration |
+| 11 | 2026-06-12 | SEE pruning (qsearch) — attempt 1 | aspiration → seeprune | [0, 10] | 8+0.08 | (2717 games) | unresolved | **ABORTED** | Observed +6.0, mid-bounds grind with no convergence. Protocol moved to mid-project bounds [0,5] (brief §5); re-running. Games discarded — SPRT can't switch bounds mid-test |
 
 <!-- Append rows below as tests complete. Never delete rows. -->

@@ -32,7 +32,7 @@
         "additional_lines_rgx": [],
         "event_name": "Fastchess Tournament",
         "site": "?",
-        "file": "H:\\RazorBot\\matches\\crashbait.pgn",
+        "file": "H:\\RazorBot\\matches\\sprt-seeprune-20260612-151033.pgn",
         "notation": 0,
         "append_file": true,
         "track_nodes": false,
@@ -51,25 +51,25 @@
         "append_file": true
     },
     "sprt": {
-        "alpha": 0.0,
-        "beta": 0.0,
+        "alpha": 0.05,
+        "beta": 0.05,
         "elo0": 0.0,
-        "elo1": 0.0,
+        "elo1": 10.0,
         "model": "normalized",
-        "enabled": false
+        "enabled": true
     },
     "config_name": "config.json",
     "output": 0,
-    "seed": 4873101821933328885,
+    "seed": 3211050697197363763,
     "variant": 0,
     "type": 0,
     "gauntlet_seeds": 1,
-    "ratinginterval": 10,
+    "ratinginterval": 100,
     "scoreinterval": 1,
     "wait": 0,
     "autosaveinterval": 20,
     "games": 2,
-    "rounds": 150,
+    "rounds": 100000,
     "concurrency": 16,
     "force_concurrency": false,
     "recover": true,
@@ -88,7 +88,7 @@
     },
     "engines": [
         {
-            "name": "seeprune",
+            "name": "new",
             "dir": "",
             "cmd": "H:\\RazorBot\\matches\\candidates\\razor-seeprune.exe",
             "args": "",
@@ -117,7 +117,7 @@
             "variant": 0
         },
         {
-            "name": "aspiration",
+            "name": "base",
             "dir": "",
             "cmd": "H:\\RazorBot\\matches\\candidates\\razor-aspiration.exe",
             "args": "",
@@ -147,16 +147,16 @@
         }
     ],
     "stats": {
-        "seeprune vs aspiration": {
-            "wins": 90,
-            "losses": 70,
-            "draws": 140,
-            "penta_WW": 11,
-            "penta_WD": 40,
-            "penta_WL": 28,
-            "penta_DD": 36,
-            "penta_LD": 28,
-            "penta_LL": 7
+        "new vs base": {
+            "wins": 683,
+            "losses": 637,
+            "draws": 1398,
+            "penta_WW": 80,
+            "penta_WD": 332,
+            "penta_WL": 191,
+            "penta_DD": 370,
+            "penta_LD": 326,
+            "penta_LL": 60
         }
     }
 }
