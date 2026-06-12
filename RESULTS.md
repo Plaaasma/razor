@@ -10,5 +10,6 @@ Standard LTC confirm: 40+0.4s.
 | 1 | 2026-06-12 | MVV-LVA capture ordering | v0.2.0 → mvvlva | [0, 10] | 8+0.08 | 138-27-9 | 2.98 | **PASS** | Elo +331±71, 174 games. New master = mvvlva |
 | 2 | 2026-06-12 | Quiescence search | mvvlva → qsearch | [0, 10] | 8+0.08 | 142-20-8 | 2.96 | **PASS** | Elo +371±82, 170 games. New master = qsearch |
 | 3 | 2026-06-12 | Transposition table | qsearch → tt | [0, 10] | 8+0.08 | 142-44-28 | 2.98 | **PASS** | Elo +206±48, 214 games. New master = tt |
+| 4 | 2026-06-12 | PVS | tt → pvs | [0, 10] | 8+0.08 | 465-400-373 | 3.00 | **PASS** | Elo +25.9±14.5, 1238 games, 34 min. Small effect → long test. New master = pvs |
 
 <!-- Append rows below as tests complete. Never delete rows. -->
