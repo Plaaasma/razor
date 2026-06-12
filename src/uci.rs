@@ -36,14 +36,14 @@ impl Uci {
             let mut parts = line.split_whitespace();
             match parts.next().unwrap() {
                 "uci" => {
-                    println!("id name Razor 0.2.0");
-                    println!("id author Liam");
-                    println!("option name Hash type spin default 16 min 1 max 4096");
-                    println!("option name Threads type spin default 1 min 1 max 32");
-                    println!("option name MoveOverhead type spin default 20 min 0 max 1000");
-                    println!("uciok");
+                    crate::send!("id name Razor 0.2.0");
+                    crate::send!("id author Liam");
+                    crate::send!("option name Hash type spin default 16 min 1 max 4096");
+                    crate::send!("option name Threads type spin default 1 min 1 max 32");
+                    crate::send!("option name MoveOverhead type spin default 20 min 0 max 1000");
+                    crate::send!("uciok");
                 }
-                "isready" => println!("readyok"),
+                "isready" => crate::send!("readyok"),
                 "ucinewgame" => {
                     self.pos = Position::startpos();
                     self.history.clear();
@@ -75,8 +75,8 @@ impl Uci {
                     let depth = parts.next().and_then(|d| d.parse().ok()).unwrap_or(5);
                     perft::divide(&self.pos, depth);
                 }
-                "fen" => println!("{}", self.pos.to_fen()),
-                "eval" => println!("{}", crate::eval::evaluate(&self.pos)),
+                "fen" => crate::send!("{}", self.pos.to_fen()),
+                "eval" => crate::send!("{}", crate::eval::evaluate(&self.pos)),
                 "quit" => break,
                 _ => {}
             }
@@ -145,7 +145,7 @@ impl Uci {
 
         let mut searcher = Searcher::new(&mut self.tt);
         let best = searcher.go(&self.pos, &limits, &self.history);
-        println!("bestmove {best}");
+        crate::send!("bestmove {best}");
     }
 }
 

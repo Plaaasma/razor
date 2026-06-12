@@ -12,7 +12,32 @@ mod zobrist;
 
 use position::Position;
 
+/// UCI output that tolerates a closed stdout pipe. `println!` panics (and
+/// aborts) when the match runner tears the pipe down mid-print — that was the
+/// entire 0xc0000409 "crash" saga of 2026-06-12.
+#[macro_export]
+macro_rules! send {
+    ($($arg:tt)*) => {{
+        use std::io::Write;
+        let _ = writeln!(std::io::stdout(), $($arg)*);
+    }};
+}
+
 fn main() {
+    // panic messages also go to a file: engines under a match runner have no
+    // visible stderr, which made the pipe-panic diagnosis painful
+    std::panic::set_hook(Box::new(|info| {
+        eprintln!("{info}");
+        if let Ok(mut f) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(r"H:\RazorBot\logs\razor-panic.log")
+        {
+            use std::io::Write;
+            let _ = writeln!(f, "[{}] {info}", std::process::id());
+        }
+    }));
+
     bitboard::init_attack_tables();
 
     let args: Vec<String> = std::env::args().collect();

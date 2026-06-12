@@ -32,7 +32,7 @@
         "additional_lines_rgx": [],
         "event_name": "Fastchess Tournament",
         "site": "?",
-        "file": "H:\\RazorBot\\matches\\sprt-seeprune-20260612-140712.pgn",
+        "file": "H:\\RazorBot\\matches\\crashbait.pgn",
         "notation": 0,
         "append_file": true,
         "track_nodes": false,
@@ -51,25 +51,25 @@
         "append_file": true
     },
     "sprt": {
-        "alpha": 0.05,
-        "beta": 0.05,
+        "alpha": 0.0,
+        "beta": 0.0,
         "elo0": 0.0,
-        "elo1": 10.0,
+        "elo1": 0.0,
         "model": "normalized",
-        "enabled": true
+        "enabled": false
     },
     "config_name": "config.json",
     "output": 0,
-    "seed": 4619736216328163319,
+    "seed": 4873101821933328885,
     "variant": 0,
     "type": 0,
     "gauntlet_seeds": 1,
-    "ratinginterval": 100,
+    "ratinginterval": 10,
     "scoreinterval": 1,
     "wait": 0,
     "autosaveinterval": 20,
     "games": 2,
-    "rounds": 100000,
+    "rounds": 150,
     "concurrency": 16,
     "force_concurrency": false,
     "recover": true,
@@ -88,9 +88,9 @@
     },
     "engines": [
         {
-            "name": "new",
+            "name": "seeprune",
             "dir": "",
-            "cmd": "H:\\RazorBot\\matches\\shims\\razor-seeprune.bat",
+            "cmd": "H:\\RazorBot\\matches\\candidates\\razor-seeprune.exe",
             "args": "",
             "restart": false,
             "options": [
@@ -117,9 +117,9 @@
             "variant": 0
         },
         {
-            "name": "base",
+            "name": "aspiration",
             "dir": "",
-            "cmd": "H:\\RazorBot\\matches\\shims\\razor-aspiration.bat",
+            "cmd": "H:\\RazorBot\\matches\\candidates\\razor-aspiration.exe",
             "args": "",
             "restart": false,
             "options": [
@@ -147,16 +147,16 @@
         }
     ],
     "stats": {
-        "new vs base": {
-            "wins": 0,
-            "losses": 0,
-            "draws": 0,
-            "penta_WW": 0,
-            "penta_WD": 0,
-            "penta_WL": 0,
-            "penta_DD": 0,
-            "penta_LD": 0,
-            "penta_LL": 0
+        "seeprune vs aspiration": {
+            "wins": 90,
+            "losses": 70,
+            "draws": 140,
+            "penta_WW": 11,
+            "penta_WD": 40,
+            "penta_WL": 28,
+            "penta_DD": 36,
+            "penta_LD": 28,
+            "penta_LL": 7
         }
     }
 }

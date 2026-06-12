@@ -89,7 +89,17 @@
   5. Phase 3 prep when ladder plateaus: v0 datagen harness + bullet training pipeline.
 - **BLOCKED:** none
 
-## OPEN BUG — rare panic in release binaries (investigation running)
+## CLOSED BUG — 0xc0000409 "crashes" were stdout pipe panics at match teardown
+
+**Root cause (found 2026-06-12 ~15:10):** Rust `println!` panics when stdout's pipe is closed mid-write; with `panic = "abort"` that aborts with 0xc0000409 and a WER event. fastchess closes engine pipes at match end (and any forced `Stop-Process` of fastchess does it instantly) — an engine mid-`info`-print at that moment dies "crashing". Smoking gun: all four razor-seeprune events timestamped 13:54:43, the exact second the queue was force-killed; the razor-lmr (13:47:35), razor-tt (10:36), razor-killers (11:27) events all align with their matches' teardown windows.
+
+**Why it was hard:** no search bug exists — position replays (movetime, real clocks, saturated box: 400+ games) and 1,160 assertion-binary games were all necessarily clean. Stderr shims broke fastchess startup (cmd spawn latency under concurrent spawns + Defender → uciok timeout), so no panic message ever got captured. Diagnosis came from event *timestamps*, not messages.
+
+**Fix (commit at HEAD):** `send!` macro (writeln + ignore errors) replaces `println!` in all UCI/search output; panic hook also appends to `H:\RazorBot\logs\razor-panic.log` for future field diagnosis. Bench unchanged (21,238) — non-functional. Existing frozen candidates keep the old print code (the panic is benign to results: it fires only at teardown, after games are decided — all ledger rows stand). All future candidates inherit the fix.
+
+**Process lessons:** (1) check event timestamps against own actions before hunting search bugs; (2) cmd.exe shims don't survive concurrent fastchess spawns; (3) WER LocalDumps registry approach works as a fallback (left enabled for razor-seeprune.exe).
+
+## (resolved) original investigation notes
 
 - Two Windows Application Error 1000 events, exception 0xc0000409 (Rust panic under panic=abort): razor-tt.exe at 10:36, razor-killers.exe at 11:27 (2026-06-12). Rate ≈ 1 crash per ~700-1000 games at 8+0.08. fastchess `-recover` scored crashes as losses, so SPRT passes stand (conservative).
 - First crashing binaries are the TT-era ones, but code inspection of tt.rs/search.rs found no obvious panic site (all TT moves are equality-compared only, never executed; indexes bounded; mate scores fit i16).

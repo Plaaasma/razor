@@ -125,7 +125,7 @@ impl<'a> Searcher<'a> {
             best = self.best_root;
             let ms = self.start.elapsed().as_millis() as u64;
             let nps = if ms > 0 { self.nodes * 1000 / ms } else { 0 };
-            println!(
+            crate::send!(
                 "info depth {depth} score {} nodes {} nps {nps} time {ms} pv {best}",
                 format_score(score),
                 self.nodes
