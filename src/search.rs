@@ -88,11 +88,35 @@ impl<'a> Searcher<'a> {
         self.max_depth = limits.depth.unwrap_or(MAX_PLY as u32 - 1).min(MAX_PLY as u32 - 1);
 
         let mut best = MOVE_NONE;
+        let mut prev_score = 0;
         for depth in 1..=self.max_depth {
-            let score = self.negamax(pos, depth, -MATE, MATE, 0, false);
+            // aspiration window around the previous iteration's score; widen
+            // exponentially on fail until the result lands inside
+            let mut delta = 25;
+            let (mut alpha, mut beta) = if depth >= 4 {
+                ((prev_score - delta).max(-MATE), (prev_score + delta).min(MATE))
+            } else {
+                (-MATE, MATE)
+            };
+            let score = loop {
+                let s = self.negamax(pos, depth, alpha, beta, 0, false);
+                if self.stopped {
+                    break s;
+                }
+                if s <= alpha {
+                    beta = (alpha + beta) / 2;
+                    alpha = (s - delta).max(-MATE);
+                } else if s >= beta {
+                    beta = (s + delta).min(MATE);
+                } else {
+                    break s;
+                }
+                delta *= 2;
+            };
             if self.stopped {
                 break;
             }
+            prev_score = score;
             best = self.best_root;
             let ms = self.start.elapsed().as_millis() as u64;
             let nps = if ms > 0 { self.nodes * 1000 / ms } else { 0 };
