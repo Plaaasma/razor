@@ -34,15 +34,14 @@ pub fn see(pos: &Position, mv: Move) -> Score {
         }
     };
 
-    let mut attacker_pt = pos.piece_on(from).expect("see: empty from").1;
+    // piece currently standing on the target square (the previous capturer)
+    let mut on_square = pos.piece_on(from).expect("see: empty from").1;
     occ ^= bb(from);
     stm = stm.flip();
 
     loop {
-        d += 1;
-        gain[d] = SEE_VALUE[attacker_pt.idx()] - gain[d - 1];
-
-        // find the least valuable attacker of `to` for stm on current occupancy
+        // a speculative gain entry only exists if stm actually has a
+        // recapturer on the current occupancy (x-rays included via recompute)
         let attackers = pos.attackers_to(to, stm, occ) & occ;
         if attackers == 0 {
             break;
@@ -56,7 +55,10 @@ pub fn see(pos: &Position, mv: Move) -> Score {
             }
         }
         let (sq, pt) = found.unwrap();
-        attacker_pt = pt;
+
+        d += 1;
+        gain[d] = SEE_VALUE[on_square.idx()] - gain[d - 1];
+        on_square = pt;
         occ ^= bb(sq);
         stm = stm.flip();
         if d + 1 >= gain.len() {
