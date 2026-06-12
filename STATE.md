@@ -79,7 +79,10 @@
 ## Job Queue
 
 - **RUNNING:** TT SPRT (fastchess, candidates\razor-tt.exe vs masters\razor-qsearch.exe); then detached queue `H:\RazorBot\matches\sprt_queue.ps1` (PID 56184 at launch) runs pvs→killers→history→nmp→lmr SPRTs sequentially. Results append to `H:\RazorBot\matches\sprt-queue-results.txt`.
-- **RUNNING:** Batch-2 SPRT queue, detached PID 51100 (`matches\sprt_queue2.ps1` → `sprt-queue2-results.txt`). Chain from razor-lmr (v0.3.0): aspiration → seeprune → rfp → futility → lmp → checkext → timemargin (last one at [-5,0] non-regression). Bench signatures: aspiration 115,563 → seeprune 70,038 → rfp 55,984 → futility 46,819 → lmp 21,418 → checkext 21,238 → timemargin 21,238 (identical to checkext — time-only change, correct).
+- **RUNNING (split across machines, 2026-06-12 ~16:40):**
+  - Local: `sprt_queue2.ps1` instance running seeprune → rfp → futility at [0,5]. NOTE: this instance still has all 6 tests — KILL IT after futility completes (Spark owns the rest).
+  - Spark (`tmux session sprt`, `~/sprt/`): lmp → checkext → timemargin. aarch64 builds from candidate commits (futility f6d9cd1, lmp 1914a20, checkext f734aa6, timemargin 506242f), fastchess-linux-arm64, results in `~/sprt/results.txt`. Spark engine speed ~930k nps bench (software-PEXT fallback) — both sides equally affected, SPRT deltas valid.
+  - Bench signatures: aspiration 115,563 → seeprune 70,038 → rfp 55,984 → futility 46,819 → lmp 21,418 → checkext 21,238 → timemargin 21,238 (identical to checkext — time-only change, correct).
 - **Batch 2 implementation notes:** SEE swap-list bug caught by unit test before SPRT (speculative gains pushed without verifying a recapturer exists — RxR-defended scored +100 instead of 0; fixed in 1313baf and candidate re-frozen). Perft suite re-validated exact after batch.
 - **QUEUED (next session):**
   1. Read queue-2 results → ledger rows → promote masters → tag v0.4.0 + LTC confirm if all pass.

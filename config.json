@@ -32,7 +32,7 @@
         "additional_lines_rgx": [],
         "event_name": "Fastchess Tournament",
         "site": "?",
-        "file": "H:\\RazorBot\\matches\\sprt-seeprune-20260612-151033.pgn",
+        "file": "H:\\RazorBot\\matches\\sprt-seeprune-20260612-162826.pgn",
         "notation": 0,
         "append_file": true,
         "track_nodes": false,
@@ -54,13 +54,13 @@
         "alpha": 0.05,
         "beta": 0.05,
         "elo0": 0.0,
-        "elo1": 10.0,
+        "elo1": 5.0,
         "model": "normalized",
         "enabled": true
     },
     "config_name": "config.json",
     "output": 0,
-    "seed": 3211050697197363763,
+    "seed": 15658197442824537348,
     "variant": 0,
     "type": 0,
     "gauntlet_seeds": 1,
@@ -148,15 +148,15 @@
     ],
     "stats": {
         "new vs base": {
-            "wins": 683,
-            "losses": 637,
-            "draws": 1398,
-            "penta_WW": 80,
-            "penta_WD": 332,
-            "penta_WL": 191,
-            "penta_DD": 370,
-            "penta_LD": 326,
-            "penta_LL": 60
+            "wins": 100,
+            "losses": 103,
+            "draws": 195,
+            "penta_WW": 13,
+            "penta_WD": 48,
+            "penta_WL": 26,
+            "penta_DD": 47,
+            "penta_LD": 53,
+            "penta_LL": 12
         }
     }
 }
