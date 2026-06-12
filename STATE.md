@@ -4,13 +4,13 @@
 
 ## Current Status
 
-- **Date:** 2026-06-12
-- **Phase:** 2 — Search ladder (Gates G0 + G1 PASSED 2026-06-12)
-- **Engine version:** Razor 0.2.0 (tag `v0.2.0`, commit f896ef8) — v0 eval (material+PSQT) + minimal full-width alpha-beta with iterative deepening and time management. This is the SPRT ladder baseline ("master").
-- **bench signature:** 600,313 nodes (depth 5, 10 FENs), ~2.1M nps search speed
-- **Estimated strength:** unknown; beats random mover 100-0. No Elo claim until SPRT/gauntlet evidence.
-- **Engine version:** none yet (cargo skeleton only)
-- **Estimated strength:** n/a
+- **Date:** 2026-06-12 (session 2)
+- **Phase:** 2 — Search ladder in progress (Gates G0 + G1 PASSED 2026-06-12)
+- **Engine renamed VENDETTA → Razor** (user request). Repo now `H:\RazorBot\razor`, binary `razor.exe`.
+- **Engine version:** Razor 0.2.0 baseline (tag `v0.2.0`) + ladder features through LMR in source (HEAD e3b8649). SPRT confirmation in flight — see ledger and "Job Queue".
+- **bench signatures along the ladder** (depth 5, 10 FENs): v0.2.0 600,313 → +MVV-LVA 108,645 → +qsearch 2,269,001 → +TT 929,142 → +PVS 555,077 → +killers 510,238 → +history 507,500 → +NMP 478,199 → +LMR 117,145
+- **SPRT-confirmed:** MVV-LVA +331 Elo (174 games), qsearch +371 Elo (170 games). TT/PVS/killers/history/NMP/LMR queued.
+- **Estimated strength:** no claim until ladder SPRTs complete.
 - **Milestone ladder:** pre-M1
 
 ## Pinned Reference Engine
@@ -78,9 +78,13 @@
 
 ## Job Queue
 
-- **RUNNING:** none
-- **QUEUED:** Phase 1 implementation (bitboards → movegen → perft → UCI)
+- **RUNNING:** TT SPRT (fastchess, candidates\razor-tt.exe vs masters\razor-qsearch.exe); then detached queue `H:\RazorBot\matches\sprt_queue.ps1` (PID 56184 at launch) runs pvs→killers→history→nmp→lmr SPRTs sequentially. Results append to `H:\RazorBot\matches\sprt-queue-results.txt`.
+- **QUEUED (next session):** read queue results → fill RESULTS.md rows → promote final master + tag v0.3.0 → LTC 40+0.4 confirmation of accumulated gains → continue ladder (aspiration windows, LMP, futility/RFP, SEE pruning in qsearch, continuation history, time mgmt refinement).
 - **BLOCKED:** none
+
+## Pipelined SPRT discipline note
+
+Candidates were developed in a chain (each builds on the previous) while SPRTs ran behind: tt→pvs→killers→history→nmp→lmr. Each queue test compares a candidate against its immediate predecessor, so a PASS confirms that single feature. If any test FAILS, every later candidate in the chain contains the failed feature — re-test the next candidate against the last passing binary and consider reverting the failed feature before continuing.
 
 ## Next Steps (Phase 2 — search ladder, ONE feature at a time, each SPRT'd vs previous master)
 
@@ -102,6 +106,14 @@ Periodic LTC 40+0.4 confirmation before release tags.
 See `RESULTS.md`.
 
 ## Session Log
+
+### 2026-06-12 — Session 2 (rename + search ladder)
+- Renamed engine VENDETTA → Razor everywhere (repo dir, cargo package, UCI id, zobrist seed, journals, scripts, archived master). Bench unchanged.
+- Ladder features implemented, committed, frozen as candidate binaries in `matches\candidates\`: MVV-LVA (9e1179a), qsearch (9e1179a), TT (a92e593), PVS (25bb8e4), killers (b81ff54), history (c767ac4), NMP (9cafef4), LMR (e3b8649).
+- SPRT #1 MVV-LVA: **PASS** +331±71 Elo, 174 games, LLR 2.98.
+- SPRT #2 qsearch: **PASS** +371±82 Elo, 170 games, LLR 2.96.
+- TT SPRT running; detached queue handles the remaining five (see Job Queue).
+- Process locks bit twice: stale engine/fastchess processes hold binaries (kill before rebuild/rename); shell CWD inside repo blocks dir rename.
 
 ### 2026-06-12 — Session 1 (Phase 0)
 - Inventoried local machine + Spark; journal above.
