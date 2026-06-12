@@ -5,7 +5,8 @@
 ## Current Status
 
 - **Date:** 2026-06-12
-- **Phase:** 1 — Board/movegen/perft (Gate G0 PASSED 2026-06-12)
+- **Phase:** 2 — Search (Gates G0 + G1 PASSED 2026-06-12)
+- **Engine version:** Vendetta 0.1.0 (perft-exact movegen, UCI shell, random-move `go` placeholder)
 - **Engine version:** none yet (cargo skeleton only)
 - **Estimated strength:** n/a
 - **Milestone ladder:** pre-M1
@@ -59,6 +60,14 @@
 1. **No tmux locally.** Windows host; WSL2 present but broken (virtualization disabled in firmware — needs BIOS change, not pursuing). Long local jobs instead run as detached processes (`Start-Process` with stdout/stderr redirected to `logs\`, PID recorded) via `scripts\run_detached.ps1`. Remote long jobs on the Spark DO use tmux.
 2. **Scripts are PowerShell (`.ps1`), not `.sh`** — same roles as brief §3: `sprt.ps1`, `bench.ps1`, `datagen.ps1`, `vs_stockfish.ps1`.
 
+## Gate G1 — PASSED 2026-06-12
+
+- Perft suite exact: 20 positions (CPW standard 6 + 14 edge cases: ep pins/discovered checks, castling checks, promotions, stalemates), 8.22B nodes total, **497M nps bulk single-thread** (target was >150M).
+- Incremental zobrist verified against from-scratch recomputation via debug-assertions build (release-dbg profile) over millions of makes.
+- 1,000 ultra-fast selfplay games (tc=1+0.01, fastchess, balanced book): all 1,000 terminations "normal" — zero crashes, illegal moves, disconnects, or time losses (`H:\RazorBot\matches\g1-selfplay.pgn`).
+- Architecture: copy-make, fully legal generation (check mask + pin restriction, occupancy-test ep), PEXT sliders (BMI2 intrinsic; portable fallback for aarch64), compile-time zobrist/leaper tables.
+- `bench` = perft(5) placeholder signature until search lands.
+
 ## Gate G0 — PASSED 2026-06-12
 
 - All tools run (fastchess, SF18 bench 1.51M nps, bullet CUDA training on 4070 Ti).
@@ -71,13 +80,13 @@
 - **QUEUED:** Phase 1 implementation (bitboards → movegen → perft → UCI)
 - **BLOCKED:** none
 
-## Next Steps
+## Next Steps (Phase 2 — search ladder, each step SPRT'd vs previous master)
 
-1. Phase 1: types + bitboards (PEXT sliders), full legal movegen.
-2. Perft validation: startpos, Kiwipete, CPW positions 3-6, edge-case set, depth ≥6 exact.
-3. UCI: uci/isready/position/go/stop/setoption/bench.
-4. Zobrist with debug-mode recomputation check.
-5. Gate G1: perft exact + 1,000 ultra-fast selfplay games without crash/illegal move.
+1. v0 eval: material + PSQT (just enough for search to be meaningful).
+2. Minimal correct search: negamax alpha-beta + iterative deepening + basic time management + real `bench` (fixed-depth search node count). This becomes master v0.2.0 — first SPRT baseline opponent is the random mover (sanity, not ledger-worthy) and then each ladder feature tests against the previous searcher.
+3. Ladder order (brief §5): aspiration → PVS → TT (+move ordering/cutoffs) → qsearch+SEE → MVV-LVA → killers → history → NMP → LMR → LMP → futility/RFP → cont-history → singular ext → check ext → corrhist → improving → lazy SMP → time mgmt refinement.
+4. SPRT protocol: STC 8+0.08, 1t, 16-32MB hash, 16 concurrency, bounds [0,10] early. Every test → row in RESULTS.md. Use `scripts\sprt.ps1`.
+5. Periodic LTC 40+0.4 confirmation before release tags.
 
 ## SPRT Ledger
 
@@ -98,3 +107,5 @@ See `RESULTS.md`.
 - Syzygy 3-4-5 complete (290 files, 0.92 GB, lichess mirror).
 - bullet CUDA smoke test passed (test1 example, bundled batch.bf, RTX 4070 Ti sm_89).
 - **Gate G0 PASSED.** Phase 1 begun: Cargo release profile (+release-dbg with assertions), target-cpu=native.
+- Phase 1 written and validated in same session: types/bitboard/zobrist/position/movegen/perft/uci modules (commit b107111). Perft suite passed first try after build. 497M nps bulk.
+- **Gate G1 PASSED** (see gate section above). Phase 2 search is next.
