@@ -32,7 +32,7 @@
         "additional_lines_rgx": [],
         "event_name": "Fastchess Tournament",
         "site": "?",
-        "file": "H:\\RazorBot\\matches\\g0-smoke.pgn",
+        "file": "H:\\RazorBot\\matches\\g1-selfplay.pgn",
         "notation": 0,
         "append_file": true,
         "track_nodes": false,
@@ -60,17 +60,17 @@
     },
     "config_name": "config.json",
     "output": 0,
-    "seed": 8524369172130030484,
+    "seed": 13450146687306184622,
     "variant": 0,
     "type": 0,
     "gauntlet_seeds": 1,
-    "ratinginterval": 25,
+    "ratinginterval": 250,
     "scoreinterval": 1,
     "wait": 0,
     "autosaveinterval": 20,
     "games": 2,
-    "rounds": 50,
-    "concurrency": 16,
+    "rounds": 500,
+    "concurrency": 30,
     "force_concurrency": false,
     "recover": false,
     "noswap": false,
@@ -88,26 +88,17 @@
     },
     "engines": [
         {
-            "name": "sf-a",
+            "name": "v-a",
             "dir": "",
-            "cmd": "H:\\RazorBot\\tools\\stockfish\\stockfish\\stockfish-windows-x86-64-bmi2.exe",
+            "cmd": "H:\\RazorBot\\vendetta\\target\\release\\vendetta.exe",
             "args": "",
             "restart": false,
-            "options": [
-                [
-                    "Hash",
-                    "16"
-                ],
-                [
-                    "Threads",
-                    "1"
-                ]
-            ],
+            "options": [],
             "limit": {
                 "tc": {
-                    "increment": 80,
+                    "increment": 10,
                     "fixed_time": 0,
-                    "time": 8000,
+                    "time": 1000,
                     "moves": 0,
                     "timemargin": 0
                 },
@@ -117,26 +108,17 @@
             "variant": 0
         },
         {
-            "name": "sf-b",
+            "name": "v-b",
             "dir": "",
-            "cmd": "H:\\RazorBot\\tools\\stockfish\\stockfish\\stockfish-windows-x86-64-bmi2.exe",
+            "cmd": "H:\\RazorBot\\vendetta\\target\\release\\vendetta.exe",
             "args": "",
             "restart": false,
-            "options": [
-                [
-                    "Hash",
-                    "16"
-                ],
-                [
-                    "Threads",
-                    "1"
-                ]
-            ],
+            "options": [],
             "limit": {
                 "tc": {
-                    "increment": 80,
+                    "increment": 10,
                     "fixed_time": 0,
-                    "time": 8000,
+                    "time": 1000,
                     "moves": 0,
                     "timemargin": 0
                 },
@@ -147,16 +129,16 @@
         }
     ],
     "stats": {
-        "sf-a vs sf-b": {
-            "wins": 8,
-            "losses": 9,
-            "draws": 83,
-            "penta_WW": 0,
-            "penta_WD": 5,
-            "penta_WL": 3,
-            "penta_DD": 36,
-            "penta_LD": 6,
-            "penta_LL": 0
+        "v-a vs v-b": {
+            "wins": 72,
+            "losses": 74,
+            "draws": 854,
+            "penta_WW": 4,
+            "penta_WD": 57,
+            "penta_WL": 7,
+            "penta_DD": 367,
+            "penta_LD": 63,
+            "penta_LL": 2
         }
     }
 }
