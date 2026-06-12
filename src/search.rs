@@ -41,6 +41,8 @@ pub struct Searcher<'a> {
     best_root: Move,
     /// two killer moves per ply: quiets that caused beta cutoffs
     killers: [[Move; 2]; MAX_PLY],
+    /// butterfly history: [stm][from][to] cutoff counter for quiet ordering
+    history: Box<[[[i32; 64]; 64]; 2]>,
 }
 
 impl<'a> Searcher<'a> {
@@ -57,6 +59,7 @@ impl<'a> Searcher<'a> {
             keys: Vec::with_capacity(1024),
             best_root: MOVE_NONE,
             killers: [[MOVE_NONE; 2]; MAX_PLY],
+            history: Box::new([[[0; 64]; 64]; 2]),
         }
     }
 
@@ -172,7 +175,7 @@ impl<'a> Searcher<'a> {
             return if pos.in_check() { -MATE + ply as Score } else { DRAW };
         }
 
-        order_moves(pos, &mut list, tt_mv, &self.killers[ply]);
+        self.order_moves(pos, &mut list, tt_mv, ply);
 
         let alpha_orig = alpha;
         let mut best = -MATE;
@@ -206,9 +209,18 @@ impl<'a> Searcher<'a> {
                 if score > alpha {
                     alpha = score;
                     if alpha >= beta {
-                        if !mv.is_capture() && mv != self.killers[ply][0] {
-                            self.killers[ply][1] = self.killers[ply][0];
-                            self.killers[ply][0] = mv;
+                        if !mv.is_capture() {
+                            if mv != self.killers[ply][0] {
+                                self.killers[ply][1] = self.killers[ply][0];
+                                self.killers[ply][0] = mv;
+                            }
+                            let h = &mut self.history[pos.stm.idx()][mv.from() as usize]
+                                [mv.to() as usize];
+                            *h += (depth * depth) as i32;
+                            // keep history below the killer band in move ordering
+                            if *h > 800_000 {
+                                *h /= 2;
+                            }
                         }
                         break;
                     }
@@ -266,7 +278,7 @@ impl<'a> Searcher<'a> {
         } else {
             crate::movegen::generate_captures(pos, &mut list);
         }
-        order_moves(pos, &mut list, MOVE_NONE, &[MOVE_NONE; 2]);
+        self.order_moves(pos, &mut list, MOVE_NONE, ply);
 
         for mv in list.iter() {
             let child = pos.make(mv);
@@ -288,43 +300,49 @@ impl<'a> Searcher<'a> {
     }
 }
 
-/// TT move first, then MVV-LVA captures (most valuable victim, least valuable
-/// attacker tiebreak), then killers, then quiets in generation order.
-fn order_moves(pos: &Position, list: &mut MoveList, tt_mv: Move, killers: &[Move; 2]) {
-    use crate::eval::PIECE_VALUE;
-    use crate::types::PieceType;
+impl<'a> Searcher<'a> {
+    /// TT move first, then MVV-LVA captures (most valuable victim, least
+    /// valuable attacker tiebreak), then killers, then quiets by history.
+    fn order_moves(&self, pos: &Position, list: &mut MoveList, tt_mv: Move, ply: usize) {
+        use crate::eval::PIECE_VALUE;
+        use crate::types::PieceType;
 
-    let mut scores = [0i32; crate::movegen::MAX_MOVES];
-    for i in 0..list.len {
-        let mv = list.moves[i];
-        if mv == tt_mv {
-            scores[i] = 10_000_000;
-        } else if mv.is_capture() {
-            let victim = if mv.is_en_passant() {
-                PieceType::Pawn
+        let killers = &self.killers[ply];
+        let mut scores = [0i32; crate::movegen::MAX_MOVES];
+        for i in 0..list.len {
+            let mv = list.moves[i];
+            if mv == tt_mv {
+                scores[i] = 10_000_000;
+            } else if mv.is_capture() {
+                let victim = if mv.is_en_passant() {
+                    PieceType::Pawn
+                } else {
+                    pos.piece_on(mv.to()).unwrap().1
+                };
+                let attacker = pos.piece_on(mv.from()).unwrap().1;
+                scores[i] =
+                    1_000_000 + 10 * PIECE_VALUE[victim.idx()] - PIECE_VALUE[attacker.idx()];
+            } else if mv == killers[0] {
+                scores[i] = 900_000;
+            } else if mv == killers[1] {
+                scores[i] = 899_999;
             } else {
-                pos.piece_on(mv.to()).unwrap().1
-            };
-            let attacker = pos.piece_on(mv.from()).unwrap().1;
-            scores[i] = 1_000_000 + 10 * PIECE_VALUE[victim.idx()] - PIECE_VALUE[attacker.idx()];
-        } else if mv == killers[0] {
-            scores[i] = 900_000;
-        } else if mv == killers[1] {
-            scores[i] = 899_999;
+                scores[i] = self.history[pos.stm.idx()][mv.from() as usize][mv.to() as usize];
+            }
         }
-    }
-    // insertion sort, descending, moves and scores in tandem (lists are short
-    // and mostly quiet, so this beats a full sort)
-    for i in 1..list.len {
-        let (mv, sc) = (list.moves[i], scores[i]);
-        let mut j = i;
-        while j > 0 && scores[j - 1] < sc {
-            list.moves[j] = list.moves[j - 1];
-            scores[j] = scores[j - 1];
-            j -= 1;
+        // insertion sort, descending, moves and scores in tandem (lists are
+        // short and mostly quiet, so this beats a full sort)
+        for i in 1..list.len {
+            let (mv, sc) = (list.moves[i], scores[i]);
+            let mut j = i;
+            while j > 0 && scores[j - 1] < sc {
+                list.moves[j] = list.moves[j - 1];
+                scores[j] = scores[j - 1];
+                j -= 1;
+            }
+            list.moves[j] = mv;
+            scores[j] = sc;
         }
-        list.moves[j] = mv;
-        scores[j] = sc;
     }
 }
 
