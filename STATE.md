@@ -79,11 +79,14 @@
 ## Job Queue
 
 - **RUNNING:** TT SPRT (fastchess, candidates\razor-tt.exe vs masters\razor-qsearch.exe); then detached queue `H:\RazorBot\matches\sprt_queue.ps1` (PID 56184 at launch) runs pvs→killers→history→nmp→lmr SPRTs sequentially. Results append to `H:\RazorBot\matches\sprt-queue-results.txt`.
+- **RUNNING:** Batch-2 SPRT queue, detached PID 51100 (`matches\sprt_queue2.ps1` → `sprt-queue2-results.txt`). Chain from razor-lmr (v0.3.0): aspiration → seeprune → rfp → futility → lmp → checkext → timemargin (last one at [-5,0] non-regression). Bench signatures: aspiration 115,563 → seeprune 70,038 → rfp 55,984 → futility 46,819 → lmp 21,418 → checkext 21,238 → timemargin 21,238 (identical to checkext — time-only change, correct).
+- **Batch 2 implementation notes:** SEE swap-list bug caught by unit test before SPRT (speculative gains pushed without verifying a recapturer exists — RxR-defended scored +100 instead of 0; fixed in 1313baf and candidate re-frozen). Perft suite re-validated exact after batch.
 - **QUEUED (next session):**
-  1. Ladder batch 2, one SPRT each: aspiration windows → SEE pruning in qsearch → futility/RFP → LMP → continuation history → time mgmt refinement (moveoverhead margin — see NMP-test timeout note) → check extensions.
+  1. Read queue-2 results → ledger rows → promote masters → tag v0.4.0 + LTC confirm if all pass.
   2. Calibration gauntlet vs a rated open-source engine (~2300-2700 CCRL) for an absolute strength anchor.
-  3. Crash investigation: stderr-capture shim around release candidates during SPRT runs (panic message capture at natural recurrence).
-  4. Phase 3 prep when ladder plateaus: v0 datagen harness + bullet training pipeline.
+  3. Crash investigation: stderr-capture shim around release candidates during SPRT runs.
+  4. Ladder batch 3: continuation history, singular extensions, correction history, improving heuristic, capture history/SEE ordering, lazy SMP.
+  5. Phase 3 prep when ladder plateaus: v0 datagen harness + bullet training pipeline.
 - **BLOCKED:** none
 
 ## OPEN BUG — rare panic in release binaries (investigation running)
