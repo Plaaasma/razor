@@ -32,7 +32,7 @@
         "additional_lines_rgx": [],
         "event_name": "Fastchess Tournament",
         "site": "?",
-        "file": "H:\\RazorBot\\matches\\ltc-v030-confirm.pgn",
+        "file": "H:\\RazorBot\\matches\\sprt-seeprune-20260612-140712.pgn",
         "notation": 0,
         "append_file": true,
         "track_nodes": false,
@@ -51,25 +51,25 @@
         "append_file": true
     },
     "sprt": {
-        "alpha": 0.0,
-        "beta": 0.0,
+        "alpha": 0.05,
+        "beta": 0.05,
         "elo0": 0.0,
-        "elo1": 0.0,
+        "elo1": 10.0,
         "model": "normalized",
-        "enabled": false
+        "enabled": true
     },
     "config_name": "config.json",
     "output": 0,
-    "seed": 17895949242272889075,
+    "seed": 4619736216328163319,
     "variant": 0,
     "type": 0,
     "gauntlet_seeds": 1,
-    "ratinginterval": 25,
+    "ratinginterval": 100,
     "scoreinterval": 1,
     "wait": 0,
     "autosaveinterval": 20,
     "games": 2,
-    "rounds": 100,
+    "rounds": 100000,
     "concurrency": 16,
     "force_concurrency": false,
     "recover": true,
@@ -88,15 +88,15 @@
     },
     "engines": [
         {
-            "name": "v030",
+            "name": "new",
             "dir": "",
-            "cmd": "H:\\RazorBot\\matches\\masters\\razor-v0.3.0.exe",
+            "cmd": "H:\\RazorBot\\matches\\shims\\razor-seeprune.bat",
             "args": "",
             "restart": false,
             "options": [
                 [
                     "Hash",
-                    "64"
+                    "16"
                 ],
                 [
                     "Threads",
@@ -105,9 +105,9 @@
             ],
             "limit": {
                 "tc": {
-                    "increment": 400,
+                    "increment": 80,
                     "fixed_time": 0,
-                    "time": 40000,
+                    "time": 8000,
                     "moves": 0,
                     "timemargin": 0
                 },
@@ -117,15 +117,15 @@
             "variant": 0
         },
         {
-            "name": "tt",
+            "name": "base",
             "dir": "",
-            "cmd": "H:\\RazorBot\\matches\\masters\\razor-tt.exe",
+            "cmd": "H:\\RazorBot\\matches\\shims\\razor-aspiration.bat",
             "args": "",
             "restart": false,
             "options": [
                 [
                     "Hash",
-                    "64"
+                    "16"
                 ],
                 [
                     "Threads",
@@ -134,9 +134,9 @@
             ],
             "limit": {
                 "tc": {
-                    "increment": 400,
+                    "increment": 80,
                     "fixed_time": 0,
-                    "time": 40000,
+                    "time": 8000,
                     "moves": 0,
                     "timemargin": 0
                 },
@@ -147,15 +147,15 @@
         }
     ],
     "stats": {
-        "v030 vs tt": {
-            "wins": 160,
-            "losses": 5,
-            "draws": 35,
-            "penta_WW": 67,
-            "penta_WD": 23,
-            "penta_WL": 3,
-            "penta_DD": 5,
-            "penta_LD": 2,
+        "new vs base": {
+            "wins": 0,
+            "losses": 0,
+            "draws": 0,
+            "penta_WW": 0,
+            "penta_WD": 0,
+            "penta_WL": 0,
+            "penta_DD": 0,
+            "penta_LD": 0,
             "penta_LL": 0
         }
     }
