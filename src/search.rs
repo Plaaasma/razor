@@ -6,7 +6,7 @@ use crate::eval::{self, DRAW, MATE, MATE_BOUND, Score};
 use crate::movegen::{MoveList, generate_moves};
 use crate::position::Position;
 use crate::tt::{BOUND_EXACT, BOUND_LOWER, BOUND_UPPER, Tt, score_from_tt, score_to_tt};
-use crate::types::{MOVE_NONE, Move};
+use crate::types::{MOVE_NONE, Move, PieceType};
 use std::time::Instant;
 
 pub struct Limits {
@@ -89,7 +89,7 @@ impl<'a> Searcher<'a> {
 
         let mut best = MOVE_NONE;
         for depth in 1..=self.max_depth {
-            let score = self.negamax(pos, depth, -MATE, MATE, 0);
+            let score = self.negamax(pos, depth, -MATE, MATE, 0, false);
             if self.stopped {
                 break;
             }
@@ -137,7 +137,15 @@ impl<'a> Searcher<'a> {
             .any(|&k| k == key)
     }
 
-    fn negamax(&mut self, pos: &Position, depth: u32, mut alpha: Score, beta: Score, ply: usize) -> Score {
+    fn negamax(
+        &mut self,
+        pos: &Position,
+        depth: u32,
+        mut alpha: Score,
+        beta: Score,
+        ply: usize,
+        is_null: bool,
+    ) -> Score {
         if depth == 0 || ply >= MAX_PLY - 1 {
             return self.qsearch(pos, alpha, beta, ply);
         }
@@ -168,11 +176,38 @@ impl<'a> Searcher<'a> {
             }
         }
 
+        let in_check = pos.in_check();
+
+        // null-move pruning: if passing the turn still fails high at reduced
+        // depth, the position is too good to need a real search. Skipped in
+        // check, after another null, near mate, and without non-pawn material
+        // (zugzwang guard).
+        if !is_null
+            && ply > 0
+            && !in_check
+            && depth >= 3
+            && beta.abs() < MATE_BOUND
+            && eval::evaluate(pos) >= beta
+            && pos.color_bb[pos.stm.idx()]
+                != pos.pieces(pos.stm, PieceType::Pawn) | pos.pieces(pos.stm, PieceType::King)
+        {
+            let child = pos.make_null();
+            self.keys.push(pos.key);
+            let score = -self.negamax(&child, depth - 3, -beta, -beta + 1, ply + 1, true);
+            self.keys.pop();
+            if self.stopped {
+                return 0;
+            }
+            if score >= beta {
+                return if score >= MATE_BOUND { beta } else { score };
+            }
+        }
+
         let mut list = MoveList::new();
         generate_moves(pos, &mut list);
 
         if list.len == 0 {
-            return if pos.in_check() { -MATE + ply as Score } else { DRAW };
+            return if in_check { -MATE + ply as Score } else { DRAW };
         }
 
         self.order_moves(pos, &mut list, tt_mv, ply);
@@ -187,11 +222,11 @@ impl<'a> Searcher<'a> {
             // PVS: full window only for the first move; the rest get a null
             // window probe, re-searched on an in-window fail-high
             let score = if first {
-                -self.negamax(&child, depth - 1, -beta, -alpha, ply + 1)
+                -self.negamax(&child, depth - 1, -beta, -alpha, ply + 1, false)
             } else {
-                let s = -self.negamax(&child, depth - 1, -alpha - 1, -alpha, ply + 1);
+                let s = -self.negamax(&child, depth - 1, -alpha - 1, -alpha, ply + 1, false);
                 if s > alpha && s < beta && !self.stopped {
-                    -self.negamax(&child, depth - 1, -beta, -alpha, ply + 1)
+                    -self.negamax(&child, depth - 1, -beta, -alpha, ply + 1, false)
                 } else {
                     s
                 }

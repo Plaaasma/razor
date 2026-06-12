@@ -362,6 +362,20 @@ impl Position {
         pos
     }
 
+    /// Null move: pass the turn. Used by null-move pruning only.
+    pub fn make_null(&self) -> Position {
+        let mut pos = *self;
+        if pos.ep != NO_SQUARE {
+            pos.key ^= zobrist::KEYS.ep_file[file_of(pos.ep) as usize];
+            pos.ep = NO_SQUARE;
+        }
+        pos.stm = pos.stm.flip();
+        pos.key ^= zobrist::KEYS.side_to_move;
+        pos.halfmove += 1;
+        debug_assert_eq!(pos.key, pos.recompute_key(), "null move zobrist mismatch");
+        pos
+    }
+
     /// From-scratch key, for debug verification.
     pub fn recompute_key(&self) -> u64 {
         let mut key = 0u64;

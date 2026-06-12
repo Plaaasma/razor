@@ -8,5 +8,6 @@ Standard LTC confirm: 40+0.4s.
 |---|------|-------|------------|--------|----|----|-----|--------|-------|
 | 0 | 2026-06-12 | v0 eval + minimal AB search | random-mover (b107111) → v0.2.0 | n/a (sanity, not SPRT) | 8+0.08 | 100-0-0 | n/a | PASS | functional gate only; first real SPRT starts with ladder feature #1 |
 | 1 | 2026-06-12 | MVV-LVA capture ordering | v0.2.0 → mvvlva | [0, 10] | 8+0.08 | 138-27-9 | 2.98 | **PASS** | Elo +331±71, 174 games. New master = mvvlva |
+| 2 | 2026-06-12 | Quiescence search | mvvlva → qsearch | [0, 10] | 8+0.08 | 142-20-8 | 2.96 | **PASS** | Elo +371±82, 170 games. New master = qsearch |
 
 <!-- Append rows below as tests complete. Never delete rows. -->
