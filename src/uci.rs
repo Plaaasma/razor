@@ -4,6 +4,7 @@ use crate::movegen::{MoveList, generate_moves};
 use crate::perft;
 use crate::position::Position;
 use crate::search::{Limits, Searcher};
+use crate::tt::Tt;
 use crate::types::*;
 use std::io::BufRead;
 
@@ -11,11 +12,12 @@ pub struct Uci {
     pos: Position,
     /// zobrist keys of game positions strictly before `pos`
     history: Vec<u64>,
+    tt: Tt,
 }
 
 impl Uci {
     pub fn new() -> Uci {
-        Uci { pos: Position::startpos(), history: Vec::new() }
+        Uci { pos: Position::startpos(), history: Vec::new(), tt: Tt::new(16) }
     }
 
     pub fn run(&mut self) {
@@ -43,8 +45,23 @@ impl Uci {
                 "ucinewgame" => {
                     self.pos = Position::startpos();
                     self.history.clear();
+                    self.tt.clear();
                 }
-                "setoption" => {} // no functional options yet
+                "setoption" => {
+                    // setoption name <id> value <x>
+                    let rest: Vec<&str> = parts.collect();
+                    let ni = rest.iter().position(|&t| t == "name");
+                    let vi = rest.iter().position(|&t| t == "value");
+                    if let (Some(ni), Some(vi)) = (ni, vi) {
+                        let name = rest[ni + 1..vi].join(" ").to_lowercase();
+                        let value = rest[vi + 1..].join(" ");
+                        if name == "hash" {
+                            if let Ok(mb) = value.parse::<usize>() {
+                                self.tt.resize(mb.clamp(1, 4096));
+                            }
+                        }
+                    }
+                }
                 "position" => self.cmd_position(line),
                 "go" => self.cmd_go(line),
                 "stop" => {}
@@ -119,7 +136,7 @@ impl Uci {
         limits.time = if self.pos.stm == Color::White { wtime } else { btime };
         limits.inc = if self.pos.stm == Color::White { winc } else { binc };
 
-        let mut searcher = Searcher::new();
+        let mut searcher = Searcher::new(&mut self.tt);
         let best = searcher.go(&self.pos, &limits, &self.history);
         println!("bestmove {best}");
     }

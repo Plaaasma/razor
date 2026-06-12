@@ -1,10 +1,11 @@
-//! Minimal correct search: full-width negamax alpha-beta with iterative
-//! deepening and time management. Deliberately featureless — the brief's §5
-//! ladder adds one SPRT-gated improvement at a time on top of this baseline.
+//! Search: negamax alpha-beta with iterative deepening, MVV-LVA ordering,
+//! quiescence, transposition table. Features land one at a time, each
+//! SPRT-gated (brief §5).
 
 use crate::eval::{self, DRAW, MATE, MATE_BOUND, Score};
 use crate::movegen::{MoveList, generate_moves};
 use crate::position::Position;
+use crate::tt::{BOUND_EXACT, BOUND_LOWER, BOUND_UPPER, Tt, score_from_tt, score_to_tt};
 use crate::types::{MOVE_NONE, Move};
 use std::time::Instant;
 
@@ -26,24 +27,25 @@ impl Limits {
 
 pub const MAX_PLY: usize = 128;
 
-pub struct Searcher {
+pub struct Searcher<'a> {
     pub nodes: u64,
+    tt: &'a mut Tt,
     start: Instant,
     soft_limit_ms: u64,
     hard_limit_ms: u64,
     node_limit: u64,
     max_depth: u32,
     stopped: bool,
-    /// zobrist keys of the game so far + search path, for repetition detection
+    /// zobrist keys of the positions preceding the node being visited
     keys: Vec<u64>,
-    /// plies since last irreversible move, aligned with `keys`
     best_root: Move,
 }
 
-impl Searcher {
-    pub fn new() -> Searcher {
+impl<'a> Searcher<'a> {
+    pub fn new(tt: &'a mut Tt) -> Searcher<'a> {
         Searcher {
             nodes: 0,
+            tt,
             start: Instant::now(),
             soft_limit_ms: u64::MAX,
             hard_limit_ms: u64::MAX,
@@ -55,9 +57,7 @@ impl Searcher {
         }
     }
 
-    /// `history` = zobrist keys of all game positions strictly BEFORE `pos`
-    /// (invariant throughout the search: `self.keys` holds the positions
-    /// preceding the node being visited).
+    /// `history` = zobrist keys of all game positions strictly BEFORE `pos`.
     pub fn go(&mut self, pos: &Position, limits: &Limits, history: &[u64]) -> Move {
         self.start = Instant::now();
         self.nodes = 0;
@@ -66,8 +66,6 @@ impl Searcher {
         self.keys.extend_from_slice(history);
         self.best_root = MOVE_NONE;
 
-        // time allocation: soft = when not to start a new iteration,
-        // hard = abort mid-search
         if let Some(mt) = limits.movetime {
             self.soft_limit_ms = mt.saturating_sub(20);
             self.hard_limit_ms = mt.saturating_sub(10);
@@ -123,7 +121,7 @@ impl Searcher {
 
     fn is_repetition(&self, key: u64, halfmove: u8) -> bool {
         let lookback = (halfmove as usize).min(self.keys.len());
-        // same side to move only: step 2; skip the current position itself
+        // same side to move only: step 2; skip the position one ply back
         self.keys
             .iter()
             .rev()
@@ -149,6 +147,21 @@ impl Searcher {
             return DRAW;
         }
 
+        // TT probe: cutoff at non-root nodes, move ordering everywhere
+        let mut tt_mv = MOVE_NONE;
+        if let Some(e) = self.tt.probe(pos.key) {
+            tt_mv = Move(e.mv);
+            if ply > 0 && e.depth as u32 >= depth {
+                let score = score_from_tt(e.score as Score, ply);
+                match e.bound {
+                    BOUND_EXACT => return score,
+                    BOUND_LOWER if score >= beta => return score,
+                    BOUND_UPPER if score <= alpha => return score,
+                    _ => {}
+                }
+            }
+        }
+
         let mut list = MoveList::new();
         generate_moves(pos, &mut list);
 
@@ -156,9 +169,11 @@ impl Searcher {
             return if pos.in_check() { -MATE + ply as Score } else { DRAW };
         }
 
-        order_moves(pos, &mut list);
+        order_moves(pos, &mut list, tt_mv);
 
+        let alpha_orig = alpha;
         let mut best = -MATE;
+        let mut best_mv = MOVE_NONE;
         self.keys.push(pos.key);
         for mv in list.iter() {
             let child = pos.make(mv);
@@ -168,6 +183,7 @@ impl Searcher {
             }
             if score > best {
                 best = score;
+                best_mv = mv;
                 if ply == 0 {
                     self.best_root = mv;
                 }
@@ -180,6 +196,17 @@ impl Searcher {
             }
         }
         self.keys.pop();
+
+        if !self.stopped {
+            let bound = if best >= beta {
+                BOUND_LOWER
+            } else if best > alpha_orig {
+                BOUND_EXACT
+            } else {
+                BOUND_UPPER
+            };
+            self.tt.store(pos.key, best_mv, score_to_tt(best, ply), depth, bound);
+        }
         best
     }
 
@@ -219,7 +246,7 @@ impl Searcher {
         } else {
             crate::movegen::generate_captures(pos, &mut list);
         }
-        order_moves(pos, &mut list);
+        order_moves(pos, &mut list, MOVE_NONE);
 
         for mv in list.iter() {
             let child = pos.make(mv);
@@ -241,16 +268,18 @@ impl Searcher {
     }
 }
 
-/// MVV-LVA: captures first, most valuable victim / least valuable attacker.
-/// Quiets keep generation order after the captures.
-fn order_moves(pos: &Position, list: &mut MoveList) {
+/// TT move first, then MVV-LVA captures (most valuable victim, least valuable
+/// attacker tiebreak), then quiets in generation order.
+fn order_moves(pos: &Position, list: &mut MoveList, tt_mv: Move) {
     use crate::eval::PIECE_VALUE;
     use crate::types::PieceType;
 
     let mut scores = [0i32; crate::movegen::MAX_MOVES];
     for i in 0..list.len {
         let mv = list.moves[i];
-        if mv.is_capture() {
+        if mv == tt_mv {
+            scores[i] = 10_000_000;
+        } else if mv.is_capture() {
             let victim = if mv.is_en_passant() {
                 PieceType::Pawn
             } else {

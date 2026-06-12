@@ -4,6 +4,7 @@ mod movegen;
 mod perft;
 mod position;
 mod search;
+mod tt;
 mod types;
 mod uci;
 mod zobrist;
@@ -49,7 +50,8 @@ fn main() {
             let mut total = 0u64;
             for fen in BENCH_FENS {
                 let pos = Position::from_fen(fen).unwrap();
-                let mut s = search::Searcher::new();
+                let mut tt = tt::Tt::new(16);
+                let mut s = search::Searcher::new(&mut tt);
                 let mut limits = search::Limits::infinite();
                 limits.depth = Some(BENCH_DEPTH);
                 s.go(&pos, &limits, &[]);
