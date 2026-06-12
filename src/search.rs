@@ -255,6 +255,19 @@ impl<'a> Searcher<'a> {
         self.keys.push(pos.key);
         for mv in list.iter() {
             move_count += 1;
+            // futility: at low depth, quiets can't lift a hopeless static
+            // eval back to alpha — skip them (never the first move, so mate
+            // and stalemate scores stay correct)
+            if move_count > 1
+                && !in_check
+                && depth <= 3
+                && !mv.is_capture()
+                && !mv.is_promo()
+                && alpha.abs() < MATE_BOUND
+                && static_eval + 80 + 120 * depth as Score <= alpha
+            {
+                continue;
+            }
             let child = pos.make(mv);
             // PVS: full window only for the first move; the rest get a null
             // window probe (late quiets at reduced depth — LMR), re-searched
