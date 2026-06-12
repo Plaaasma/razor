@@ -268,6 +268,18 @@ impl<'a> Searcher<'a> {
             {
                 continue;
             }
+            // late move pruning: with sane ordering, quiets this deep into
+            // the list at low depth almost never matter
+            if move_count > 1
+                && !in_check
+                && depth <= 4
+                && !mv.is_capture()
+                && !mv.is_promo()
+                && alpha.abs() < MATE_BOUND
+                && move_count as u32 > 2 + depth * depth
+            {
+                continue;
+            }
             let child = pos.make(mv);
             // PVS: full window only for the first move; the rest get a null
             // window probe (late quiets at reduced depth — LMR), re-searched
