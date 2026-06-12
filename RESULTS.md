@@ -18,5 +18,6 @@ Standard LTC confirm: 40+0.4s.
 | 9 | 2026-06-12 | LTC confirm: v0.3.0 vs tt-master | fixed 200 games | n/a | 40+0.4 | 159-35-5 | n/a | **CONFIRMED** | 88.7% ≈ +358 Elo at LTC vs STC chain expectation ~+382 for the same five features — gains hold at LTC. v0.3.0 validated |
 | 10 | 2026-06-12 | Aspiration windows | lmr (v0.3.0) → aspiration | [0, 10] | 8+0.08 | 281-462-197 | accepted | **PASS** | Elo +31.1±15.9, 940 games. New master = aspiration |
 | 11 | 2026-06-12 | SEE pruning (qsearch) — attempt 1 | aspiration → seeprune | [0, 10] | 8+0.08 | (2717 games) | unresolved | **ABORTED** | Observed +6.0, mid-bounds grind with no convergence. Protocol moved to mid-project bounds [0,5] (brief §5); re-running. Games discarded — SPRT can't switch bounds mid-test |
+| 12 | 2026-06-12 | Late move pruning | futility → lmp | [0, 5] | 8+0.08 (Spark/aarch64) | 275-518-427 | H0 accepted | **FAIL −43.5±14.9** | 1220 games. Far too aggressive (2+d² threshold with current ordering quality). REVERTED. checkext/timemargin candidates rebuilt without LMP. Brief §5 was right: "expect several to fail on first attempt; debug margins, don't abandon" — retune later with better ordering |
 
 <!-- Append rows below as tests complete. Never delete rows. -->
