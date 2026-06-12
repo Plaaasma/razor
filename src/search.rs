@@ -39,6 +39,8 @@ pub struct Searcher<'a> {
     /// zobrist keys of the positions preceding the node being visited
     keys: Vec<u64>,
     best_root: Move,
+    /// two killer moves per ply: quiets that caused beta cutoffs
+    killers: [[Move; 2]; MAX_PLY],
 }
 
 impl<'a> Searcher<'a> {
@@ -54,6 +56,7 @@ impl<'a> Searcher<'a> {
             stopped: false,
             keys: Vec::with_capacity(1024),
             best_root: MOVE_NONE,
+            killers: [[MOVE_NONE; 2]; MAX_PLY],
         }
     }
 
@@ -169,7 +172,7 @@ impl<'a> Searcher<'a> {
             return if pos.in_check() { -MATE + ply as Score } else { DRAW };
         }
 
-        order_moves(pos, &mut list, tt_mv);
+        order_moves(pos, &mut list, tt_mv, &self.killers[ply]);
 
         let alpha_orig = alpha;
         let mut best = -MATE;
@@ -203,6 +206,10 @@ impl<'a> Searcher<'a> {
                 if score > alpha {
                     alpha = score;
                     if alpha >= beta {
+                        if !mv.is_capture() && mv != self.killers[ply][0] {
+                            self.killers[ply][1] = self.killers[ply][0];
+                            self.killers[ply][0] = mv;
+                        }
                         break;
                     }
                 }
@@ -259,7 +266,7 @@ impl<'a> Searcher<'a> {
         } else {
             crate::movegen::generate_captures(pos, &mut list);
         }
-        order_moves(pos, &mut list, MOVE_NONE);
+        order_moves(pos, &mut list, MOVE_NONE, &[MOVE_NONE; 2]);
 
         for mv in list.iter() {
             let child = pos.make(mv);
@@ -282,8 +289,8 @@ impl<'a> Searcher<'a> {
 }
 
 /// TT move first, then MVV-LVA captures (most valuable victim, least valuable
-/// attacker tiebreak), then quiets in generation order.
-fn order_moves(pos: &Position, list: &mut MoveList, tt_mv: Move) {
+/// attacker tiebreak), then killers, then quiets in generation order.
+fn order_moves(pos: &Position, list: &mut MoveList, tt_mv: Move, killers: &[Move; 2]) {
     use crate::eval::PIECE_VALUE;
     use crate::types::PieceType;
 
@@ -300,6 +307,10 @@ fn order_moves(pos: &Position, list: &mut MoveList, tt_mv: Move) {
             };
             let attacker = pos.piece_on(mv.from()).unwrap().1;
             scores[i] = 1_000_000 + 10 * PIECE_VALUE[victim.idx()] - PIECE_VALUE[attacker.idx()];
+        } else if mv == killers[0] {
+            scores[i] = 900_000;
+        } else if mv == killers[1] {
+            scores[i] = 899_999;
         }
     }
     // insertion sort, descending, moves and scores in tandem (lists are short
