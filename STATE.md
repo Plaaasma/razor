@@ -7,10 +7,10 @@
 - **Date:** 2026-06-12 (session 2)
 - **Phase:** 2 — Search ladder in progress (Gates G0 + G1 PASSED 2026-06-12)
 - **Engine renamed VENDETTA → Razor** (user request). Repo now `H:\RazorBot\razor`, binary `razor.exe`.
-- **Engine version:** Razor 0.2.0 baseline (tag `v0.2.0`) + ladder features through LMR in source (HEAD e3b8649). SPRT confirmation in flight — see ledger and "Job Queue".
-- **bench signatures along the ladder** (depth 5, 10 FENs): v0.2.0 600,313 → +MVV-LVA 108,645 → +qsearch 2,269,001 → +TT 929,142 → +PVS 555,077 → +killers 510,238 → +history 507,500 → +NMP 478,199 → +LMR 117,145
-- **SPRT-confirmed:** MVV-LVA +331 Elo (174 games), qsearch +371 Elo (170 games). TT/PVS/killers/history/NMP/LMR queued.
-- **Estimated strength:** no claim until ladder SPRTs complete.
+- **Engine version:** Razor 0.3.0 (tag `v0.3.0`) — bench signature 117,145. Binary archived as `matches\masters\razor-v0.3.0.exe`.
+- **Ladder batch 1 COMPLETE — 8/8 SPRT passes** (full ledger in RESULTS.md): MVV-LVA +331, qsearch +371, TT +206, PVS +26, killers +54, history +21.5, NMP ~+164, LMR +116. Chain sum ≈ +1290 self-play Elo over v0.2.0 at STC.
+- **LTC confirmation:** running (v0.3.0 vs razor-tt master at 40+0.4 — chosen over v0.2.0 because a ~1300-Elo gap saturates at 100% and confirms nothing; vs mid-chain master actually validates that the recent features hold at LTC).
+- **Estimated strength:** chain-relative only; absolute calibration gauntlet vs a rated engine is queued for next session.
 - **Milestone ladder:** pre-M1
 
 ## Pinned Reference Engine
