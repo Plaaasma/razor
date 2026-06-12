@@ -135,7 +135,7 @@ impl Searcher {
 
     fn negamax(&mut self, pos: &Position, depth: u32, mut alpha: Score, beta: Score, ply: usize) -> Score {
         if depth == 0 || ply >= MAX_PLY - 1 {
-            return eval::evaluate(pos);
+            return self.qsearch(pos, alpha, beta, ply);
         }
 
         self.nodes += 1;
@@ -155,6 +155,8 @@ impl Searcher {
         if list.len == 0 {
             return if pos.in_check() { -MATE + ply as Score } else { DRAW };
         }
+
+        order_moves(pos, &mut list);
 
         let mut best = -MATE;
         self.keys.push(pos.key);
@@ -179,6 +181,97 @@ impl Searcher {
         }
         self.keys.pop();
         best
+    }
+
+    /// Quiescence: stand pat, then captures/promotions only. When in check,
+    /// search all evasions instead (no stand pat — sitting still is not an
+    /// option in check).
+    fn qsearch(&mut self, pos: &Position, mut alpha: Score, beta: Score, ply: usize) -> Score {
+        self.nodes += 1;
+        self.check_limits();
+        if self.stopped {
+            return 0;
+        }
+        if ply >= MAX_PLY - 1 {
+            return eval::evaluate(pos);
+        }
+
+        let in_check = pos.in_check();
+        let mut best;
+        if in_check {
+            best = -MATE + ply as Score;
+        } else {
+            best = eval::evaluate(pos);
+            if best >= beta {
+                return best;
+            }
+            if best > alpha {
+                alpha = best;
+            }
+        }
+
+        let mut list = MoveList::new();
+        if in_check {
+            generate_moves(pos, &mut list);
+            if list.len == 0 {
+                return -MATE + ply as Score;
+            }
+        } else {
+            crate::movegen::generate_captures(pos, &mut list);
+        }
+        order_moves(pos, &mut list);
+
+        for mv in list.iter() {
+            let child = pos.make(mv);
+            let score = -self.qsearch(&child, -beta, -alpha, ply + 1);
+            if self.stopped {
+                break;
+            }
+            if score > best {
+                best = score;
+                if score > alpha {
+                    alpha = score;
+                    if alpha >= beta {
+                        break;
+                    }
+                }
+            }
+        }
+        best
+    }
+}
+
+/// MVV-LVA: captures first, most valuable victim / least valuable attacker.
+/// Quiets keep generation order after the captures.
+fn order_moves(pos: &Position, list: &mut MoveList) {
+    use crate::eval::PIECE_VALUE;
+    use crate::types::PieceType;
+
+    let mut scores = [0i32; crate::movegen::MAX_MOVES];
+    for i in 0..list.len {
+        let mv = list.moves[i];
+        if mv.is_capture() {
+            let victim = if mv.is_en_passant() {
+                PieceType::Pawn
+            } else {
+                pos.piece_on(mv.to()).unwrap().1
+            };
+            let attacker = pos.piece_on(mv.from()).unwrap().1;
+            scores[i] = 1_000_000 + 10 * PIECE_VALUE[victim.idx()] - PIECE_VALUE[attacker.idx()];
+        }
+    }
+    // insertion sort, descending, moves and scores in tandem (lists are short
+    // and mostly quiet, so this beats a full sort)
+    for i in 1..list.len {
+        let (mv, sc) = (list.moves[i], scores[i]);
+        let mut j = i;
+        while j > 0 && scores[j - 1] < sc {
+            list.moves[j] = list.moves[j - 1];
+            scores[j] = scores[j - 1];
+            j -= 1;
+        }
+        list.moves[j] = mv;
+        scores[j] = sc;
     }
 }
 

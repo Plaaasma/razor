@@ -31,7 +31,17 @@ impl MoveList {
     }
 }
 
+/// All legal moves.
 pub fn generate_moves(pos: &Position, list: &mut MoveList) {
+    gen_impl::<false>(pos, list)
+}
+
+/// Captures, en passant, and promotions only (quiescence search).
+pub fn generate_captures(pos: &Position, list: &mut MoveList) {
+    gen_impl::<true>(pos, list)
+}
+
+fn gen_impl<const CAPS_ONLY: bool>(pos: &Position, list: &mut MoveList) {
     let us = pos.stm;
     let them = us.flip();
     let ksq = pos.king_sq(us);
@@ -41,11 +51,13 @@ pub fn generate_moves(pos: &Position, list: &mut MoveList) {
 
     let checkers = pos.attackers_to(ksq, them, occ);
     let pinned = pos.pinned();
+    // in captures-only mode, restrict every piece's targets to enemy pieces
+    let cap_targets = if CAPS_ONLY { theirs } else { !0u64 };
 
     // --- king moves (always considered; exclude squares attacked with the
     // king removed from occupancy so sliders see through it) ---
     let occ_no_king = occ ^ bb(ksq);
-    for to in BitIter(KING_ATTACKS[ksq as usize] & !ours) {
+    for to in BitIter(KING_ATTACKS[ksq as usize] & !ours & cap_targets) {
         if pos.attackers_to(to, them, occ_no_king) == 0 {
             let f = if theirs & bb(to) != 0 { flag::CAPTURE } else { flag::QUIET };
             list.push(Move::new(ksq, to, f));
@@ -64,7 +76,7 @@ pub fn generate_moves(pos: &Position, list: &mut MoveList) {
 
     // --- knights (a pinned knight can never move) ---
     for from in BitIter(pos.pieces(us, PieceType::Knight) & !pinned) {
-        for to in BitIter(KNIGHT_ATTACKS[from as usize] & !ours & check_mask) {
+        for to in BitIter(KNIGHT_ATTACKS[from as usize] & !ours & check_mask & cap_targets) {
             let f = if theirs & bb(to) != 0 { flag::CAPTURE } else { flag::QUIET };
             list.push(Move::new(from, to, f));
         }
@@ -77,7 +89,7 @@ pub fn generate_moves(pos: &Position, list: &mut MoveList) {
         (PieceType::Queen, queen_attacks),
     ] {
         for from in BitIter(pos.pieces(us, pt)) {
-            let mut targets = attack_fn(from, occ) & !ours & check_mask;
+            let mut targets = attack_fn(from, occ) & !ours & check_mask & cap_targets;
             if pinned & bb(from) != 0 {
                 targets &= line_through(ksq, from);
             }
@@ -98,7 +110,7 @@ pub fn generate_moves(pos: &Position, list: &mut MoveList) {
     for from in BitIter(pawns) {
         let pin_line = if pinned & bb(from) != 0 { line_through(ksq, from) } else { !0u64 };
 
-        // pushes
+        // pushes (captures-only mode keeps just the promotion pushes)
         let one = (from as i8 + push_dir) as Square;
         if occ & bb(one) == 0 {
             if bb(one) & check_mask & pin_line != 0 {
@@ -106,11 +118,11 @@ pub fn generate_moves(pos: &Position, list: &mut MoveList) {
                     for pf in [flag::PROMO_Q, flag::PROMO_N, flag::PROMO_R, flag::PROMO_B] {
                         list.push(Move::new(from, one, pf));
                     }
-                } else {
+                } else if !CAPS_ONLY {
                     list.push(Move::new(from, one, flag::QUIET));
                 }
             }
-            if bb(from) & start_rank != 0 {
+            if !CAPS_ONLY && bb(from) & start_rank != 0 {
                 let two = (from as i8 + 2 * push_dir) as Square;
                 if occ & bb(two) == 0 && bb(two) & check_mask & pin_line != 0 {
                     list.push(Move::new(from, two, flag::DOUBLE_PUSH));
@@ -156,7 +168,7 @@ pub fn generate_moves(pos: &Position, list: &mut MoveList) {
     }
 
     // --- castling ---
-    if checkers == 0 {
+    if !CAPS_ONLY && checkers == 0 {
         let (k_right, q_right, k_path, q_path_empty, q_path_safe, kfrom, kto_k, kto_q) = match us {
             Color::White => (
                 castling::WK,
