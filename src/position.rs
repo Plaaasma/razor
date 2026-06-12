@@ -197,6 +197,18 @@ impl Position {
             pos.key ^= zobrist::KEYS.ep_file[file_of(pos.ep) as usize];
         }
 
+        // basic legality: both kings present, side not to move not in check
+        // (otherwise movegen can "capture" a king and corrupt the search)
+        if pos.pieces(Color::White, PieceType::King).count_ones() != 1
+            || pos.pieces(Color::Black, PieceType::King).count_ones() != 1
+        {
+            return Err(format!("illegal FEN (king count): {fen}"));
+        }
+        let prev = pos.stm.flip();
+        if pos.attackers_to(pos.king_sq(prev), pos.stm, pos.occupied()) != 0 {
+            return Err(format!("illegal FEN (side not to move is in check): {fen}"));
+        }
+
         Ok(pos)
     }
 

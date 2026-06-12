@@ -1,7 +1,9 @@
 mod bitboard;
+mod eval;
 mod movegen;
 mod perft;
 mod position;
+mod search;
 mod types;
 mod uci;
 mod zobrist;
@@ -28,13 +30,35 @@ fn main() {
             }
         }
         Some("bench") => {
-            // placeholder until search exists (Phase 2): fixed perft as a
-            // stable node-count signature for non-functional-change checks
-            let pos = Position::startpos();
+            // fixed-depth search over a varied position set: deterministic
+            // node-count signature for non-functional-change verification
+            const BENCH_DEPTH: u32 = 5;
+            const BENCH_FENS: &[&str] = &[
+                position::START_FEN,
+                "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+                "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+                "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
+                "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
+                "rnbqkb1r/pp2pppp/3p1n2/8/3NP3/8/PPP2PPP/RNBQKB1R w KQkq - 1 5",
+                "4rrk1/pp1n3p/3q2pQ/2p1pb2/2PP4/2P3N1/P2B2PP/4RRK1 b - - 7 19",
+                "6k1/6p1/7p/8/4B3/5K2/8/8 w - - 0 1",
+                "8/8/8/5N2/8/p7/8/2NK3k w - - 0 1",
+                "5k2/5p2/4B1p1/7p/7P/4PK2/8/8 w - - 0 48",
+            ];
             let t = std::time::Instant::now();
-            let nodes = perft::perft(&pos, 5);
-            println!("Nodes searched  : {nodes}");
-            println!("Time (ms)       : {}", t.elapsed().as_millis());
+            let mut total = 0u64;
+            for fen in BENCH_FENS {
+                let pos = Position::from_fen(fen).unwrap();
+                let mut s = search::Searcher::new();
+                let mut limits = search::Limits::infinite();
+                limits.depth = Some(BENCH_DEPTH);
+                s.go(&pos, &limits, &[]);
+                total += s.nodes;
+            }
+            let ms = t.elapsed().as_millis().max(1) as u64;
+            println!("Nodes searched  : {total}");
+            println!("Time (ms)       : {ms}");
+            println!("Nodes/second    : {}", total * 1000 / ms);
         }
         _ => uci::Uci::new().run(),
     }
