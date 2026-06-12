@@ -82,6 +82,14 @@
 - **QUEUED (next session):** read queue results → fill RESULTS.md rows → promote final master + tag v0.3.0 → LTC 40+0.4 confirmation of accumulated gains → continue ladder (aspiration windows, LMP, futility/RFP, SEE pruning in qsearch, continuation history, time mgmt refinement).
 - **BLOCKED:** none
 
+## OPEN BUG — rare panic in release binaries (investigation running)
+
+- Two Windows Application Error 1000 events, exception 0xc0000409 (Rust panic under panic=abort): razor-tt.exe at 10:36, razor-killers.exe at 11:27 (2026-06-12). Rate ≈ 1 crash per ~700-1000 games at 8+0.08. fastchess `-recover` scored crashes as losses, so SPRT passes stand (conservative).
+- First crashing binaries are the TT-era ones, but code inspection of tt.rs/search.rs found no obvious panic site (all TT moves are equality-compared only, never executed; indexes bounded; mate scores fit i16).
+- Repro attempt 1: release-dbg (assertions+overflow checks+unwind) selfplay, 300 games @ 2+0.02 — CLEAN.
+- Repro attempt 2 RUNNING (detached PID 84756): 400 games @ 8+0.08 (the crash TC), `matches\bughunt2.ps1` → `bughunt2-summary.txt` / `bughunt2.log` / `bughunt2.pgn`.
+- If repro 2 is clean: next angle is enabling fastchess trace logging on the remaining queue tests and/or wrapping candidates with a stderr-capture shim, then waiting for natural recurrence. Crash-on-panic binaries print nothing; release-dbg unwind prints the panic message to stderr.
+
 ## Pipelined SPRT discipline note
 
 Candidates were developed in a chain (each builds on the previous) while SPRTs ran behind: tt→pvs→killers→history→nmp→lmr. Each queue test compares a candidate against its immediate predecessor, so a PASS confirms that single feature. If any test FAILS, every later candidate in the chain contains the failed feature — re-test the next candidate against the last passing binary and consider reverting the failed feature before continuing.

@@ -11,5 +11,6 @@ Standard LTC confirm: 40+0.4s.
 | 2 | 2026-06-12 | Quiescence search | mvvlva → qsearch | [0, 10] | 8+0.08 | 142-20-8 | 2.96 | **PASS** | Elo +371±82, 170 games. New master = qsearch |
 | 3 | 2026-06-12 | Transposition table | qsearch → tt | [0, 10] | 8+0.08 | 142-44-28 | 2.98 | **PASS** | Elo +206±48, 214 games. New master = tt |
 | 4 | 2026-06-12 | PVS | tt → pvs | [0, 10] | 8+0.08 | 465-400-373 | 3.00 | **PASS** | Elo +25.9±14.5, 1238 games, 34 min. Small effect → long test. New master = pvs |
+| 5 | 2026-06-12 | Killer moves | pvs → killers | [0, 10] | 8+0.08 | 227-213-138 | 2.97 | **PASS** | Elo +53.9±22, 578 games. New master = killers. Note: one razor-killers crash mid-test (0xc0000409 panic), scored as loss via -recover — investigation open |
 
 <!-- Append rows below as tests complete. Never delete rows. -->
