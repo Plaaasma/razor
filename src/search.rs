@@ -348,6 +348,11 @@ impl<'a> Searcher<'a> {
         self.order_moves(pos, &mut list, MOVE_NONE, ply);
 
         for mv in list.iter() {
+            // prune captures that lose material by SEE (not while in check —
+            // those are evasions, and not promotions — too tactical)
+            if !in_check && !mv.is_promo() && crate::see::see(pos, mv) < 0 {
+                continue;
+            }
             let child = pos.make(mv);
             let score = -self.qsearch(&child, -beta, -alpha, ply + 1);
             if self.stopped {

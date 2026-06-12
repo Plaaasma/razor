@@ -4,6 +4,7 @@ mod movegen;
 mod perft;
 mod position;
 mod search;
+mod see;
 mod tt;
 mod types;
 mod uci;
