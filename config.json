@@ -1,0 +1,162 @@
+{
+    "resign": {
+        "move_count": 1,
+        "score": 0,
+        "twosided": false,
+        "enabled": false
+    },
+    "draw": {
+        "move_number": 0,
+        "move_count": 1,
+        "score": 0,
+        "enabled": false
+    },
+    "maxmoves": {
+        "move_count": 1,
+        "enabled": false
+    },
+    "tb_adjudication": {
+        "syzygy_dirs": "",
+        "max_pieces": 0,
+        "ignore_50_move_rule": false,
+        "enabled": false
+    },
+    "opening": {
+        "file": "H:\\RazorBot\\books\\8moves_v3.pgn",
+        "format": 1,
+        "order": 0,
+        "plies": -1,
+        "start": 1
+    },
+    "pgn": {
+        "additional_lines_rgx": [],
+        "event_name": "Fastchess Tournament",
+        "site": "?",
+        "file": "H:\\RazorBot\\matches\\g0-smoke.pgn",
+        "notation": 0,
+        "append_file": true,
+        "track_nodes": false,
+        "track_seldepth": false,
+        "track_nps": false,
+        "track_hashfull": false,
+        "track_tbhits": false,
+        "track_timeleft": false,
+        "track_latency": false,
+        "track_pv": false,
+        "min": false,
+        "crc": false
+    },
+    "epd": {
+        "file": "",
+        "append_file": true
+    },
+    "sprt": {
+        "alpha": 0.0,
+        "beta": 0.0,
+        "elo0": 0.0,
+        "elo1": 0.0,
+        "model": "normalized",
+        "enabled": false
+    },
+    "config_name": "config.json",
+    "output": 0,
+    "seed": 8524369172130030484,
+    "variant": 0,
+    "type": 0,
+    "gauntlet_seeds": 1,
+    "ratinginterval": 25,
+    "scoreinterval": 1,
+    "wait": 0,
+    "autosaveinterval": 20,
+    "games": 2,
+    "rounds": 50,
+    "concurrency": 16,
+    "force_concurrency": false,
+    "recover": false,
+    "noswap": false,
+    "reverse": false,
+    "report_penta": true,
+    "affinity": false,
+    "show_latency": false,
+    "log": {
+        "file": "",
+        "level": 2,
+        "append_file": true,
+        "compress": false,
+        "realtime": true,
+        "engine_coms": false
+    },
+    "engines": [
+        {
+            "name": "sf-a",
+            "dir": "",
+            "cmd": "H:\\RazorBot\\tools\\stockfish\\stockfish\\stockfish-windows-x86-64-bmi2.exe",
+            "args": "",
+            "restart": false,
+            "options": [
+                [
+                    "Hash",
+                    "16"
+                ],
+                [
+                    "Threads",
+                    "1"
+                ]
+            ],
+            "limit": {
+                "tc": {
+                    "increment": 80,
+                    "fixed_time": 0,
+                    "time": 8000,
+                    "moves": 0,
+                    "timemargin": 0
+                },
+                "nodes": 0,
+                "plies": 0
+            },
+            "variant": 0
+        },
+        {
+            "name": "sf-b",
+            "dir": "",
+            "cmd": "H:\\RazorBot\\tools\\stockfish\\stockfish\\stockfish-windows-x86-64-bmi2.exe",
+            "args": "",
+            "restart": false,
+            "options": [
+                [
+                    "Hash",
+                    "16"
+                ],
+                [
+                    "Threads",
+                    "1"
+                ]
+            ],
+            "limit": {
+                "tc": {
+                    "increment": 80,
+                    "fixed_time": 0,
+                    "time": 8000,
+                    "moves": 0,
+                    "timemargin": 0
+                },
+                "nodes": 0,
+                "plies": 0
+            },
+            "variant": 0
+        }
+    ],
+    "stats": {
+        "sf-a vs sf-b": {
+            "wins": 8,
+            "losses": 9,
+            "draws": 83,
+            "penta_WW": 0,
+            "penta_WD": 5,
+            "penta_WL": 3,
+            "penta_DD": 36,
+            "penta_LD": 6,
+            "penta_LL": 0
+        }
+    }
+}

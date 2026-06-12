@@ -5,7 +5,7 @@
 ## Current Status
 
 - **Date:** 2026-06-12
-- **Phase:** 0 — Environment setup (Gate G0 in progress)
+- **Phase:** 1 — Board/movegen/perft (Gate G0 PASSED 2026-06-12)
 - **Engine version:** none yet (cargo skeleton only)
 - **Estimated strength:** n/a
 - **Milestone ladder:** pre-M1
@@ -26,7 +26,8 @@
 | git | 2.24.1.windows.2 (old but functional) |
 | fastchess | v1.8.0-alpha (20260128) — `H:\RazorBot\tools\fastchess\fastchess-windows-x86-64\fastchess.exe` |
 | Python (local) | 3.12.10 (+ paramiko) |
-| bullet trainer | NOT YET SET UP (task pending) |
+| bullet trainer | cloned at `H:\RazorBot\tools\bullet`; CUDA smoke test PASSED on 4070 Ti (sm_89), ~15M pos/s on tiny test net | 
+| CUDA (local) | toolkit 12.6, driver 591.86 |
 
 ## Books
 
@@ -37,7 +38,9 @@
 
 ## Syzygy
 
-- 3-4-5 man downloading from `tablebase.lichess.ovh/tables/standard/3-4-5/` to `H:\RazorBot\syzygy\` (resumable script: `H:\RazorBot\scripts_bootstrap\syzygy_dl.py`)
+- 3-4-5 man COMPLETE: 290 files (.rtbw+.rtbz), 0.92 GB in `H:\RazorBot\syzygy\`
+- Source: `tablebase.lichess.ovh/tables/standard/3-4-5-wdl/` + `3-4-5-dtz/` (note: no plain `3-4-5/` dir; sesse.net mirror rate-limits concurrent fetches — avoid)
+- Resumable downloader: `H:\RazorBot\scripts_bootstrap\syzygy_dl.py`
 
 ## Hardware Inventory
 
@@ -56,18 +59,25 @@
 1. **No tmux locally.** Windows host; WSL2 present but broken (virtualization disabled in firmware — needs BIOS change, not pursuing). Long local jobs instead run as detached processes (`Start-Process` with stdout/stderr redirected to `logs\`, PID recorded) via `scripts\run_detached.ps1`. Remote long jobs on the Spark DO use tmux.
 2. **Scripts are PowerShell (`.ps1`), not `.sh`** — same roles as brief §3: `sprt.ps1`, `bench.ps1`, `datagen.ps1`, `vs_stockfish.ps1`.
 
+## Gate G0 — PASSED 2026-06-12
+
+- All tools run (fastchess, SF18 bench 1.51M nps, bullet CUDA training on 4070 Ti).
+- 100-game SF-vs-SF smoke match via fastchess completed: 49.5% score, 83 draws, no crashes (`H:\RazorBot\matches\g0-smoke.pgn`). Total time 2:45 at 16 concurrency.
+- Spark inventoried and journaled (see Hardware Inventory).
+
 ## Job Queue
 
-- **RUNNING:** Syzygy 3-4-5 download (background)
-- **QUEUED:** bullet setup + GPU smoke test; G0 smoke match (SF vs SF, 100 games)
+- **RUNNING:** none
+- **QUEUED:** Phase 1 implementation (bitboards → movegen → perft → UCI)
 - **BLOCKED:** none
 
 ## Next Steps
 
-1. Finish Syzygy download (verify file count + size).
-2. Clone `bullet`, verify CUDA training works on 4070 Ti (check local CUDA toolkit first).
-3. Run G0 smoke match: SF vs SF, 100 games, fastchess, balanced book → Gate G0 PASS.
-4. Begin Phase 1: bitboards + movegen + perft.
+1. Phase 1: types + bitboards (PEXT sliders), full legal movegen.
+2. Perft validation: startpos, Kiwipete, CPW positions 3-6, edge-case set, depth ≥6 exact.
+3. UCI: uci/isready/position/go/stop/setoption/bench.
+4. Zobrist with debug-mode recomputation check.
+5. Gate G1: perft exact + 1,000 ultra-fast selfplay games without crash/illegal move.
 
 ## SPRT Ledger
 
@@ -84,3 +94,7 @@ See `RESULTS.md`.
 - Books downloaded (8moves_v3, UHO_XXL_2022_+120_+149).
 - Repo initialized (`H:\RazorBot\vendetta`, cargo skeleton).
 - Known issue: piping text to engines from PowerShell 5.1 adds UTF-16 BOM — use argv commands (`stockfish.exe bench`) or write input files without BOM.
+- fastchess syntax note: `-each threads=1` is rejected; use `option.Threads=1` (scripts fixed).
+- Syzygy 3-4-5 complete (290 files, 0.92 GB, lichess mirror).
+- bullet CUDA smoke test passed (test1 example, bundled batch.bf, RTX 4070 Ti sm_89).
+- **Gate G0 PASSED.** Phase 1 begun: Cargo release profile (+release-dbg with assertions), target-cpu=native.

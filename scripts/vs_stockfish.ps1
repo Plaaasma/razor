@@ -31,7 +31,7 @@ $epdLog = Join-Path $outDir "vs-sf-$stamp.config.json"
 $fcArgs = @(
     "-engine", "cmd=$Engine", "name=vendetta",
     "-engine", "cmd=$stockfish", "name=sf18",
-    "-each", "tc=$TC", "option.Hash=$HashMB", "threads=$Threads",
+    "-each", "tc=$TC", "option.Hash=$HashMB", "option.Threads=$Threads",
     "-openings", "file=$book", "format=pgn", "order=random",
     "-repeat", "-games", "2", "-rounds", "$Pairs",
     "-concurrency", "2",

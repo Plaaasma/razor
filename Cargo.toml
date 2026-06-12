@@ -4,3 +4,16 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+
+# release with debug assertions, for perft/zobrist verification runs
+[profile.release-dbg]
+inherits = "release"
+debug = true
+debug-assertions = true
+overflow-checks = true
+panic = "unwind"

@@ -28,7 +28,7 @@ $pgnOut = Join-Path $outDir "sprt-$Name-$stamp.pgn"
 $fcArgs = @(
     "-engine", "cmd=$New", "name=new",
     "-engine", "cmd=$Base", "name=base",
-    "-each", "tc=$TC", "option.Hash=$HashMB", "threads=1",
+    "-each", "tc=$TC", "option.Hash=$HashMB", "option.Threads=1",
     "-openings", "file=$Book", "format=pgn", "order=random",
     "-repeat", "-games", "2", "-rounds", "100000",
     "-sprt", "elo0=$Elo0", "elo1=$Elo1", "alpha=0.05", "beta=0.05",
