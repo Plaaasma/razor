@@ -9,7 +9,7 @@
 - **Engine renamed VENDETTA → Razor** (user request). Repo now `H:\RazorBot\razor`, binary `razor.exe`.
 - **Engine version:** Razor 0.3.0 (tag `v0.3.0`) — bench signature 117,145. Binary archived as `matches\masters\razor-v0.3.0.exe`.
 - **Ladder batch 1 COMPLETE — 8/8 SPRT passes** (full ledger in RESULTS.md): MVV-LVA +331, qsearch +371, TT +206, PVS +26, killers +54, history +21.5, NMP ~+164, LMR +116. Chain sum ≈ +1290 self-play Elo over v0.2.0 at STC.
-- **LTC confirmation:** running (v0.3.0 vs razor-tt master at 40+0.4 — chosen over v0.2.0 because a ~1300-Elo gap saturates at 100% and confirms nothing; vs mid-chain master actually validates that the recent features hold at LTC).
+- **LTC confirmation: PASSED** — v0.3.0 vs razor-tt at 40+0.4, 159W-35D-5L (88.7%) ≈ +358 Elo, vs ~+382 STC chain expectation for the same features. v0.3.0 tag validated per brief §5.
 - **Estimated strength:** chain-relative only; absolute calibration gauntlet vs a rated engine is queued for next session.
 - **Milestone ladder:** pre-M1
 
@@ -79,7 +79,11 @@
 ## Job Queue
 
 - **RUNNING:** TT SPRT (fastchess, candidates\razor-tt.exe vs masters\razor-qsearch.exe); then detached queue `H:\RazorBot\matches\sprt_queue.ps1` (PID 56184 at launch) runs pvs→killers→history→nmp→lmr SPRTs sequentially. Results append to `H:\RazorBot\matches\sprt-queue-results.txt`.
-- **QUEUED (next session):** read queue results → fill RESULTS.md rows → promote final master + tag v0.3.0 → LTC 40+0.4 confirmation of accumulated gains → continue ladder (aspiration windows, LMP, futility/RFP, SEE pruning in qsearch, continuation history, time mgmt refinement).
+- **QUEUED (next session):**
+  1. Ladder batch 2, one SPRT each: aspiration windows → SEE pruning in qsearch → futility/RFP → LMP → continuation history → time mgmt refinement (moveoverhead margin — see NMP-test timeout note) → check extensions.
+  2. Calibration gauntlet vs a rated open-source engine (~2300-2700 CCRL) for an absolute strength anchor.
+  3. Crash investigation: stderr-capture shim around release candidates during SPRT runs (panic message capture at natural recurrence).
+  4. Phase 3 prep when ladder plateaus: v0 datagen harness + bullet training pipeline.
 - **BLOCKED:** none
 
 ## OPEN BUG — rare panic in release binaries (investigation running)

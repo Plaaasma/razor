@@ -15,5 +15,6 @@ Standard LTC confirm: 40+0.4s.
 | 6 | 2026-06-12 | History heuristic | killers → history | [0, 10] | 8+0.08 | 531-501-440 | 2.96 | **PASS** | Elo +21.5±13, 1472 games, 40 min. New master = history |
 | 7 | 2026-06-12 | Null-move pruning | history → nmp | [0, 10] | 8+0.08 | 147-63-38 | n/a (accepted) | **PASS** | ≈+164 Elo (72.0%), 248 games, 6:39. Summary clipped by queue script (timeout stats); W-D-L recovered from PGN. 22 timeouts total (9 new / 13 base) from CPU contention with concurrent bughunt run — roughly symmetric, result direction unaffected. New master = nmp |
 | 8 | 2026-06-12 | Late move reductions | nmp → lmr | [0, 10] | 8+0.08 | 133-120-39 | 2.97 | **PASS** | Elo +116±31, 292 games, 8:20. New master = lmr → tagged v0.3.0 |
+| 9 | 2026-06-12 | LTC confirm: v0.3.0 vs tt-master | fixed 200 games | n/a | 40+0.4 | 159-35-5 | n/a | **CONFIRMED** | 88.7% ≈ +358 Elo at LTC vs STC chain expectation ~+382 for the same five features — gains hold at LTC. v0.3.0 validated |
 
 <!-- Append rows below as tests complete. Never delete rows. -->
