@@ -174,10 +174,23 @@ impl<'a> Searcher<'a> {
         let alpha_orig = alpha;
         let mut best = -MATE;
         let mut best_mv = MOVE_NONE;
+        let mut first = true;
         self.keys.push(pos.key);
         for mv in list.iter() {
             let child = pos.make(mv);
-            let score = -self.negamax(&child, depth - 1, -beta, -alpha, ply + 1);
+            // PVS: full window only for the first move; the rest get a null
+            // window probe, re-searched on an in-window fail-high
+            let score = if first {
+                -self.negamax(&child, depth - 1, -beta, -alpha, ply + 1)
+            } else {
+                let s = -self.negamax(&child, depth - 1, -alpha - 1, -alpha, ply + 1);
+                if s > alpha && s < beta && !self.stopped {
+                    -self.negamax(&child, depth - 1, -beta, -alpha, ply + 1)
+                } else {
+                    s
+                }
+            };
+            first = false;
             if self.stopped {
                 break;
             }

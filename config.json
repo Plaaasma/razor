@@ -148,11 +148,11 @@
     ],
     "stats": {
         "new vs base": {
-            "wins": 50,
+            "wins": 67,
             "losses": 4,
-            "draws": 4,
-            "penta_WW": 23,
-            "penta_WD": 2,
+            "draws": 7,
+            "penta_WW": 30,
+            "penta_WD": 5,
             "penta_WL": 2,
             "penta_DD": 1,
             "penta_LD": 0,
