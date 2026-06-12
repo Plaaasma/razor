@@ -17,11 +17,13 @@ pub struct Limits {
     pub movetime: Option<u64>,
     pub depth: Option<u32>,
     pub nodes: Option<u64>,
+    /// per-move communication overhead reserve in ms (UCI MoveOverhead)
+    pub overhead: u64,
 }
 
 impl Limits {
     pub fn infinite() -> Limits {
-        Limits { time: None, inc: None, movetime: None, depth: None, nodes: None }
+        Limits { time: None, inc: None, movetime: None, depth: None, nodes: None, overhead: 20 }
     }
 }
 
@@ -73,10 +75,13 @@ impl<'a> Searcher<'a> {
         self.best_root = MOVE_NONE;
 
         if let Some(mt) = limits.movetime {
-            self.soft_limit_ms = mt.saturating_sub(20);
-            self.hard_limit_ms = mt.saturating_sub(10);
+            self.soft_limit_ms = mt.saturating_sub(limits.overhead);
+            self.hard_limit_ms = mt.saturating_sub(limits.overhead / 2);
         } else if let Some(t) = limits.time {
             let inc = limits.inc.unwrap_or(0);
+            // budget from the clock minus a communication reserve, so process
+            // and GUI latency can't flag us in fast games
+            let t = t.saturating_sub(limits.overhead).max(1);
             let alloc = t / 25 + inc / 2;
             self.soft_limit_ms = alloc.min(t.saturating_sub(30));
             self.hard_limit_ms = (3 * alloc).min(t / 3).max(1);

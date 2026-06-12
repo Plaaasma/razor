@@ -13,11 +13,12 @@ pub struct Uci {
     /// zobrist keys of game positions strictly before `pos`
     history: Vec<u64>,
     tt: Tt,
+    move_overhead: u64,
 }
 
 impl Uci {
     pub fn new() -> Uci {
-        Uci { pos: Position::startpos(), history: Vec::new(), tt: Tt::new(16) }
+        Uci { pos: Position::startpos(), history: Vec::new(), tt: Tt::new(16), move_overhead: 20 }
     }
 
     pub fn run(&mut self) {
@@ -39,6 +40,7 @@ impl Uci {
                     println!("id author Liam");
                     println!("option name Hash type spin default 16 min 1 max 4096");
                     println!("option name Threads type spin default 1 min 1 max 32");
+                    println!("option name MoveOverhead type spin default 20 min 0 max 1000");
                     println!("uciok");
                 }
                 "isready" => println!("readyok"),
@@ -58,6 +60,10 @@ impl Uci {
                         if name == "hash" {
                             if let Ok(mb) = value.parse::<usize>() {
                                 self.tt.resize(mb.clamp(1, 4096));
+                            }
+                        } else if name == "moveoverhead" {
+                            if let Ok(ms) = value.parse::<u64>() {
+                                self.move_overhead = ms.min(1000);
                             }
                         }
                     }
@@ -133,6 +139,7 @@ impl Uci {
             }
         }
         (wtime, btime, winc, binc) = (t[0], t[1], t[2], t[3]);
+        limits.overhead = self.move_overhead;
         limits.time = if self.pos.stm == Color::White { wtime } else { btime };
         limits.inc = if self.pos.stm == Color::White { winc } else { binc };
 
