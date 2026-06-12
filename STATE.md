@@ -5,8 +5,10 @@
 ## Current Status
 
 - **Date:** 2026-06-12
-- **Phase:** 2 — Search (Gates G0 + G1 PASSED 2026-06-12)
-- **Engine version:** Vendetta 0.1.0 (perft-exact movegen, UCI shell, random-move `go` placeholder)
+- **Phase:** 2 — Search ladder (Gates G0 + G1 PASSED 2026-06-12)
+- **Engine version:** Vendetta 0.2.0 (tag `v0.2.0`, commit f896ef8) — v0 eval (material+PSQT) + minimal full-width alpha-beta with iterative deepening and time management. This is the SPRT ladder baseline ("master").
+- **bench signature:** 600,313 nodes (depth 5, 10 FENs), ~2.1M nps search speed
+- **Estimated strength:** unknown; beats random mover 100-0. No Elo claim until SPRT/gauntlet evidence.
 - **Engine version:** none yet (cargo skeleton only)
 - **Estimated strength:** n/a
 - **Milestone ladder:** pre-M1
@@ -80,13 +82,20 @@
 - **QUEUED:** Phase 1 implementation (bitboards → movegen → perft → UCI)
 - **BLOCKED:** none
 
-## Next Steps (Phase 2 — search ladder, each step SPRT'd vs previous master)
+## Next Steps (Phase 2 — search ladder, ONE feature at a time, each SPRT'd vs previous master)
 
-1. v0 eval: material + PSQT (just enough for search to be meaningful).
-2. Minimal correct search: negamax alpha-beta + iterative deepening + basic time management + real `bench` (fixed-depth search node count). This becomes master v0.2.0 — first SPRT baseline opponent is the random mover (sanity, not ledger-worthy) and then each ladder feature tests against the previous searcher.
-3. Ladder order (brief §5): aspiration → PVS → TT (+move ordering/cutoffs) → qsearch+SEE → MVV-LVA → killers → history → NMP → LMR → LMP → futility/RFP → cont-history → singular ext → check ext → corrhist → improving → lazy SMP → time mgmt refinement.
-4. SPRT protocol: STC 8+0.08, 1t, 16-32MB hash, 16 concurrency, bounds [0,10] early. Every test → row in RESULTS.md. Use `scripts\sprt.ps1`.
-5. Periodic LTC 40+0.4 confirmation before release tags.
+DONE: v0 eval + minimal AB search = v0.2.0 baseline (RESULTS.md row 0).
+
+Ladder remaining, roughly in brief §5 order (expected-value-adjusted: ordering/qsearch/TT are the big early wins):
+1. MVV-LVA capture ordering
+2. Quiescence search (+ SEE pruning as separate patch)
+3. Transposition table (+ TT move ordering, TT cutoffs)
+4. Aspiration windows; PVS
+5. Killers → history → NMP → LMR → LMP → futility/RFP → cont-history → singular ext → check ext → corrhist → improving → lazy SMP → time mgmt refinement
+
+SPRT protocol: STC 8+0.08, 1t, 16MB hash, 16 concurrency, bounds [0,10] early phase, alpha=beta=0.05. Use `scripts\sprt.ps1 -New <new.exe> -Base <master.exe> -Name <patch> -Elo0 0 -Elo1 10`. Every test gets a RESULTS.md row, pass or fail. Keep master binary copies in `H:\RazorBot\matches\masters\` (e.g. `vendetta-v0.2.0.exe`) so SPRT bases don't need rebuilds.
+
+Periodic LTC 40+0.4 confirmation before release tags.
 
 ## SPRT Ledger
 
@@ -108,4 +117,9 @@ See `RESULTS.md`.
 - bullet CUDA smoke test passed (test1 example, bundled batch.bf, RTX 4070 Ti sm_89).
 - **Gate G0 PASSED.** Phase 1 begun: Cargo release profile (+release-dbg with assertions), target-cpu=native.
 - Phase 1 written and validated in same session: types/bitboard/zobrist/position/movegen/perft/uci modules (commit b107111). Perft suite passed first try after build. 497M nps bulk.
-- **Gate G1 PASSED** (see gate section above). Phase 2 search is next.
+- **Gate G1 PASSED** (see gate section above).
+- Phase 2 baseline written same session: eval.rs (material+PSQT), search.rs (negamax AB + ID + soft/hard time mgmt + repetition/50-move/mate handling), UCI go parsing, real bench. Tagged **v0.2.0** (f896ef8).
+- Bug found & fixed: a bench FEN was an illegal position (side not to move in check) → movegen "captured" the king → `king_sq` on empty bitboard → index-64 panic. Fix: replaced FEN + `from_fen` now validates king count and side-not-to-move-not-in-check. Lesson: never trust hand-recalled FENs; validate at the boundary.
+- Sanity match: v0.2.0 vs random-mover build, 100-0 at STC, no crashes (RESULTS.md row 0).
+- Stale processes holding `target\release\vendetta.exe` block rebuilds — `Get-Process vendetta | Stop-Process -Force` first if cargo says "failed to remove file".
+- Next session: copy v0.2.0 binary to `matches\masters\`, then ladder feature #1 (MVV-LVA) under SPRT [0,10].
