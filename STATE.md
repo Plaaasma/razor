@@ -87,8 +87,10 @@
 - Two Windows Application Error 1000 events, exception 0xc0000409 (Rust panic under panic=abort): razor-tt.exe at 10:36, razor-killers.exe at 11:27 (2026-06-12). Rate ≈ 1 crash per ~700-1000 games at 8+0.08. fastchess `-recover` scored crashes as losses, so SPRT passes stand (conservative).
 - First crashing binaries are the TT-era ones, but code inspection of tt.rs/search.rs found no obvious panic site (all TT moves are equality-compared only, never executed; indexes bounded; mate scores fit i16).
 - Repro attempt 1: release-dbg (assertions+overflow checks+unwind) selfplay, 300 games @ 2+0.02 — CLEAN.
-- Repro attempt 2 RUNNING (detached PID 84756): 400 games @ 8+0.08 (the crash TC), `matches\bughunt2.ps1` → `bughunt2-summary.txt` / `bughunt2.log` / `bughunt2.pgn`.
-- If repro 2 is clean: next angle is enabling fastchess trace logging on the remaining queue tests and/or wrapping candidates with a stderr-capture shim, then waiting for natural recurrence. Crash-on-panic binaries print nothing; release-dbg unwind prints the panic message to stderr.
+- Repro attempt 2: 400 games @ 8+0.08 (the crash TC), release-dbg — CLEAN. 760 total assertion-binary games without repro; no further WER events as of 12:30.
+- Status: UNREPRODUCED. Crash rate ~1/1000 games in release candidates; could be a panic the release-dbg build masks differently, or genuinely rare state. Next angles (next session): (a) stderr-capture shim around release candidates during regular SPRT runs so the panic message gets logged at natural occurrence; (b) longer release-dbg soak overnight on idle box. Do NOT run soaks concurrently with SPRTs (see below).
+- LESSON (12:08-12:15): running bughunt2 concurrently with the NMP SPRT caused 22 time-loss games (9 new / 13 base) from CPU contention. Reaffirms brief §8: SPRT runs get the box to themselves (16 games max), auxiliary matches wait. Timeouts were ~symmetric; NMP result direction unaffected.
+- Queue script defect: `Select-Object -Last 12` clipped fastchess summaries when the timeout-stats block appeared (NMP test). Fixed to -Last 30 for future runs; NMP W-D-L recovered from PGN.
 
 ## Pipelined SPRT discipline note
 
