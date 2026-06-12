@@ -215,23 +215,31 @@ impl<'a> Searcher<'a> {
         let alpha_orig = alpha;
         let mut best = -MATE;
         let mut best_mv = MOVE_NONE;
-        let mut first = true;
+        let mut move_count = 0u32;
         self.keys.push(pos.key);
         for mv in list.iter() {
+            move_count += 1;
             let child = pos.make(mv);
             // PVS: full window only for the first move; the rest get a null
-            // window probe, re-searched on an in-window fail-high
-            let score = if first {
+            // window probe (late quiets at reduced depth — LMR), re-searched
+            // on fail-high
+            let score = if move_count == 1 {
                 -self.negamax(&child, depth - 1, -beta, -alpha, ply + 1, false)
             } else {
-                let s = -self.negamax(&child, depth - 1, -alpha - 1, -alpha, ply + 1, false);
-                if s > alpha && s < beta && !self.stopped {
-                    -self.negamax(&child, depth - 1, -beta, -alpha, ply + 1, false)
-                } else {
-                    s
+                let mut r = 0;
+                if depth >= 3 && move_count > 3 && !in_check && !mv.is_capture() && !mv.is_promo()
+                {
+                    r = 1 + (move_count > 8) as u32;
                 }
+                let mut s = -self.negamax(&child, depth - 1 - r, -alpha - 1, -alpha, ply + 1, false);
+                if r > 0 && s > alpha && !self.stopped {
+                    s = -self.negamax(&child, depth - 1, -alpha - 1, -alpha, ply + 1, false);
+                }
+                if s > alpha && s < beta && !self.stopped {
+                    s = -self.negamax(&child, depth - 1, -beta, -alpha, ply + 1, false);
+                }
+                s
             };
-            first = false;
             if self.stopped {
                 break;
             }
