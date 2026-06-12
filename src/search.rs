@@ -252,6 +252,8 @@ impl<'a> Searcher<'a> {
         let mut best = -MATE;
         let mut best_mv = MOVE_NONE;
         let mut move_count = 0u32;
+        // check extension: evasions are forced sequences, search them deeper
+        let new_depth = depth - 1 + u32::from(in_check);
         self.keys.push(pos.key);
         for mv in list.iter() {
             move_count += 1;
@@ -285,19 +287,20 @@ impl<'a> Searcher<'a> {
             // window probe (late quiets at reduced depth — LMR), re-searched
             // on fail-high
             let score = if move_count == 1 {
-                -self.negamax(&child, depth - 1, -beta, -alpha, ply + 1, false)
+                -self.negamax(&child, new_depth, -beta, -alpha, ply + 1, false)
             } else {
                 let mut r = 0;
                 if depth >= 3 && move_count > 3 && !in_check && !mv.is_capture() && !mv.is_promo()
                 {
                     r = 1 + (move_count > 8) as u32;
                 }
-                let mut s = -self.negamax(&child, depth - 1 - r, -alpha - 1, -alpha, ply + 1, false);
+                let mut s =
+                    -self.negamax(&child, new_depth - r, -alpha - 1, -alpha, ply + 1, false);
                 if r > 0 && s > alpha && !self.stopped {
-                    s = -self.negamax(&child, depth - 1, -alpha - 1, -alpha, ply + 1, false);
+                    s = -self.negamax(&child, new_depth, -alpha - 1, -alpha, ply + 1, false);
                 }
                 if s > alpha && s < beta && !self.stopped {
-                    s = -self.negamax(&child, depth - 1, -beta, -alpha, ply + 1, false);
+                    s = -self.negamax(&child, new_depth, -beta, -alpha, ply + 1, false);
                 }
                 s
             };
