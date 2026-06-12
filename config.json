@@ -32,7 +32,7 @@
         "additional_lines_rgx": [],
         "event_name": "Fastchess Tournament",
         "site": "?",
-        "file": "H:\\RazorBot\\matches\\sprt-seeprune-20260612-162826.pgn",
+        "file": "H:\\RazorBot\\matches\\sprt-rfp-20260612-180056.pgn",
         "notation": 0,
         "append_file": true,
         "track_nodes": false,
@@ -60,7 +60,7 @@
     },
     "config_name": "config.json",
     "output": 0,
-    "seed": 15658197442824537348,
+    "seed": 13798298061075562733,
     "variant": 0,
     "type": 0,
     "gauntlet_seeds": 1,
@@ -90,7 +90,7 @@
         {
             "name": "new",
             "dir": "",
-            "cmd": "H:\\RazorBot\\matches\\candidates\\razor-seeprune.exe",
+            "cmd": "H:\\RazorBot\\matches\\candidates\\razor-rfp.exe",
             "args": "",
             "restart": false,
             "options": [
@@ -119,7 +119,7 @@
         {
             "name": "base",
             "dir": "",
-            "cmd": "H:\\RazorBot\\matches\\candidates\\razor-aspiration.exe",
+            "cmd": "H:\\RazorBot\\matches\\candidates\\razor-seeprune.exe",
             "args": "",
             "restart": false,
             "options": [
@@ -148,15 +148,15 @@
     ],
     "stats": {
         "new vs base": {
-            "wins": 458,
-            "losses": 424,
-            "draws": 856,
-            "penta_WW": 56,
-            "penta_WD": 225,
-            "penta_WL": 121,
-            "penta_DD": 204,
-            "penta_LD": 223,
-            "penta_LL": 40
+            "wins": 7,
+            "losses": 0,
+            "draws": 11,
+            "penta_WW": 1,
+            "penta_WD": 5,
+            "penta_WL": 0,
+            "penta_DD": 3,
+            "penta_LD": 0,
+            "penta_LL": 0
         }
     }
 }
