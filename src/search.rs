@@ -201,6 +201,18 @@ impl<'a> Searcher<'a> {
         }
 
         let in_check = pos.in_check();
+        let static_eval = if in_check { -MATE } else { eval::evaluate(pos) };
+
+        // reverse futility: eval is so far above beta that even a large
+        // margin per remaining ply can't bring it back down
+        if !in_check
+            && ply > 0
+            && depth <= 8
+            && beta.abs() < MATE_BOUND
+            && static_eval - 80 * depth as Score >= beta
+        {
+            return static_eval;
+        }
 
         // null-move pruning: if passing the turn still fails high at reduced
         // depth, the position is too good to need a real search. Skipped in
@@ -211,7 +223,7 @@ impl<'a> Searcher<'a> {
             && !in_check
             && depth >= 3
             && beta.abs() < MATE_BOUND
-            && eval::evaluate(pos) >= beta
+            && static_eval >= beta
             && pos.color_bb[pos.stm.idx()]
                 != pos.pieces(pos.stm, PieceType::Pawn) | pos.pieces(pos.stm, PieceType::King)
         {
