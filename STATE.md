@@ -1,4 +1,4 @@
-# VENDETTA — Project State
+# RAZOR — Project State
 
 > Journal per project brief (`H:\RazorBot\aggressive_engine_prompt.md`). Re-read brief at session start. Update this file every session.
 
@@ -6,7 +6,7 @@
 
 - **Date:** 2026-06-12
 - **Phase:** 2 — Search ladder (Gates G0 + G1 PASSED 2026-06-12)
-- **Engine version:** Vendetta 0.2.0 (tag `v0.2.0`, commit f896ef8) — v0 eval (material+PSQT) + minimal full-width alpha-beta with iterative deepening and time management. This is the SPRT ladder baseline ("master").
+- **Engine version:** Razor 0.2.0 (tag `v0.2.0`, commit f896ef8) — v0 eval (material+PSQT) + minimal full-width alpha-beta with iterative deepening and time management. This is the SPRT ladder baseline ("master").
 - **bench signature:** 600,313 nodes (depth 5, 10 FENs), ~2.1M nps search speed
 - **Estimated strength:** unknown; beats random mover 100-0. No Elo claim until SPRT/gauntlet evidence.
 - **Engine version:** none yet (cargo skeleton only)
@@ -93,7 +93,7 @@ Ladder remaining, roughly in brief §5 order (expected-value-adjusted: ordering/
 4. Aspiration windows; PVS
 5. Killers → history → NMP → LMR → LMP → futility/RFP → cont-history → singular ext → check ext → corrhist → improving → lazy SMP → time mgmt refinement
 
-SPRT protocol: STC 8+0.08, 1t, 16MB hash, 16 concurrency, bounds [0,10] early phase, alpha=beta=0.05. Use `scripts\sprt.ps1 -New <new.exe> -Base <master.exe> -Name <patch> -Elo0 0 -Elo1 10`. Every test gets a RESULTS.md row, pass or fail. Keep master binary copies in `H:\RazorBot\matches\masters\` (e.g. `vendetta-v0.2.0.exe`) so SPRT bases don't need rebuilds.
+SPRT protocol: STC 8+0.08, 1t, 16MB hash, 16 concurrency, bounds [0,10] early phase, alpha=beta=0.05. Use `scripts\sprt.ps1 -New <new.exe> -Base <master.exe> -Name <patch> -Elo0 0 -Elo1 10`. Every test gets a RESULTS.md row, pass or fail. Keep master binary copies in `H:\RazorBot\matches\masters\` (e.g. `razor-v0.2.0.exe`) so SPRT bases don't need rebuilds.
 
 Periodic LTC 40+0.4 confirmation before release tags.
 
@@ -110,7 +110,7 @@ See `RESULTS.md`.
 - Pinned Stockfish 18 (bmi2 build), verified bench.
 - fastchess v1.8.0-alpha installed and verified.
 - Books downloaded (8moves_v3, UHO_XXL_2022_+120_+149).
-- Repo initialized (`H:\RazorBot\vendetta`, cargo skeleton).
+- Repo initialized (`H:\RazorBot\razor`, cargo skeleton).
 - Known issue: piping text to engines from PowerShell 5.1 adds UTF-16 BOM — use argv commands (`stockfish.exe bench`) or write input files without BOM.
 - fastchess syntax note: `-each threads=1` is rejected; use `option.Threads=1` (scripts fixed).
 - Syzygy 3-4-5 complete (290 files, 0.92 GB, lichess mirror).
@@ -121,5 +121,5 @@ See `RESULTS.md`.
 - Phase 2 baseline written same session: eval.rs (material+PSQT), search.rs (negamax AB + ID + soft/hard time mgmt + repetition/50-move/mate handling), UCI go parsing, real bench. Tagged **v0.2.0** (f896ef8).
 - Bug found & fixed: a bench FEN was an illegal position (side not to move in check) → movegen "captured" the king → `king_sq` on empty bitboard → index-64 panic. Fix: replaced FEN + `from_fen` now validates king count and side-not-to-move-not-in-check. Lesson: never trust hand-recalled FENs; validate at the boundary.
 - Sanity match: v0.2.0 vs random-mover build, 100-0 at STC, no crashes (RESULTS.md row 0).
-- Stale processes holding `target\release\vendetta.exe` block rebuilds — `Get-Process vendetta | Stop-Process -Force` first if cargo says "failed to remove file".
+- Stale processes holding `target\release\razor.exe` block rebuilds — `Get-Process razor | Stop-Process -Force` first if cargo says "failed to remove file".
 - Next session: copy v0.2.0 binary to `matches\masters\`, then ladder feature #1 (MVV-LVA) under SPRT [0,10].

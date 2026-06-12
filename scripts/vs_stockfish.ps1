@@ -1,13 +1,13 @@
 <#
 .SYNOPSIS
-The benchmark that defines success (brief §7). Vendetta vs pinned Stockfish 18.
+The benchmark that defines success (brief §7). Razor vs pinned Stockfish 18.
 500+ game pairs, UHO unbalanced book, both sides of each opening.
 TC 60+0.6, 8 threads each, 256 MB hash, Syzygy adjudication, concurrency 2.
 
 MUST run on an otherwise idle machine (brief §8) — check Task Manager first.
 
 .EXAMPLE
-.\vs_stockfish.ps1 -Engine ..\target\release\vendetta.exe -Pairs 500 -Detached
+.\vs_stockfish.ps1 -Engine ..\target\release\razor.exe -Pairs 500 -Detached
 #>
 param(
     [Parameter(Mandatory)][string]$Engine,
@@ -29,7 +29,7 @@ $pgnOut = Join-Path $outDir "vs-sf-$stamp.pgn"
 $epdLog = Join-Path $outDir "vs-sf-$stamp.config.json"
 
 $fcArgs = @(
-    "-engine", "cmd=$Engine", "name=vendetta",
+    "-engine", "cmd=$Engine", "name=razor",
     "-engine", "cmd=$stockfish", "name=sf18",
     "-each", "tc=$TC", "option.Hash=$HashMB", "option.Threads=$Threads",
     "-openings", "file=$book", "format=pgn", "order=random",

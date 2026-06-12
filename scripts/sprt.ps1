@@ -4,7 +4,7 @@ Standardized SPRT between two engine binaries via fastchess (brief §5 protocol)
 STC defaults: 8+0.08s, 1 thread, 16 MB hash, 16 concurrent, balanced book.
 
 .EXAMPLE
-.\sprt.ps1 -New ..\target\release\vendetta-new.exe -Base ..\target\release\vendetta-master.exe -Elo0 0 -Elo1 5 -Name tt-cutoffs
+.\sprt.ps1 -New ..\target\release\razor-new.exe -Base ..\target\release\razor-master.exe -Elo0 0 -Elo1 5 -Name tt-cutoffs
 #>
 param(
     [Parameter(Mandatory)][string]$New,

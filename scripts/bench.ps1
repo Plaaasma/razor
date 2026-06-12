@@ -4,7 +4,7 @@ Run the engine's `bench` command and report signature node count.
 Used to verify non-functional changes (node count must be identical) and track speed.
 
 .EXAMPLE
-.\bench.ps1 -Engine ..\target\release\vendetta.exe
+.\bench.ps1 -Engine ..\target\release\razor.exe
 #>
 param(
     [Parameter(Mandatory)][string]$Engine

@@ -21,7 +21,7 @@ pub struct Keys {
 }
 
 const fn generate() -> Keys {
-    let mut state = 0x5645_4e44_4554_5441u64; // seed: "VENDETTA"
+    let mut state = 0x0052_415a_4f52_2121u64; // seed: "RAZOR!!"
     let mut keys = Keys {
         piece: [[[0; 64]; 6]; 2],
         castling: [0; 16],

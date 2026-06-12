@@ -33,7 +33,7 @@ impl Uci {
             let mut parts = line.split_whitespace();
             match parts.next().unwrap() {
                 "uci" => {
-                    println!("id name Vendetta 0.2.0");
+                    println!("id name Razor 0.2.0");
                     println!("id author Liam");
                     println!("option name Hash type spin default 16 min 1 max 4096");
                     println!("option name Threads type spin default 1 min 1 max 32");
