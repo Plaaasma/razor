@@ -4,8 +4,12 @@
 
 ## Current Status
 
-- **Date:** 2026-06-12 (session 2)
-- **Phase:** 2 — Search ladder, batch 2 COMPLETE; v0.4.0 tagged (Gates G0 + G1 PASSED 2026-06-12)
+- **Date:** 2026-06-13 (session 2 cont.)
+- **Phase:** 3 — NNUE. **v0.5.0 tagged: NNUE eval validated (+50.9 Elo vs v0.4.0 PSQT).** M1 milestone check vs SF18 running.
+- **Engine version:** Razor 0.5.0 (tag `v0.5.0`, commit 9ecf34e). NNUE `(768→512)x2→1` razor1 net, incremental dual-perspective accumulator, 3.97M nps. Archived `matches\masters\razor-v0.5.0.exe`. PSQT eval retained as `UseNNUE=false` fallback.
+- **Strength chain:** v0.2.0 → +1290 (search) → v0.3.0 → +123 LTC → v0.4.0 → +51 (NNUE) → v0.5.0. Razor is now a real NNUE engine.
+
+- **Phase 2 history (done):** Search ladder batch 2 COMPLETE; v0.4.0 tagged (Gates G0 + G1 PASSED 2026-06-12)
 - **Engine version:** Razor 0.4.0 (tag `v0.4.0`, commit 4fbb32c), bench 55,251. Archived `matches\masters\razor-v0.4.0.exe`. **LTC CONFIRMED: +123±33 Elo vs v0.3.0 at 40+0.4 (67%, 200 games)** — batch-2 gains hold at long TC.
 
 ### Batch 2 final (ladder features 10-18, all SPRT-gated)

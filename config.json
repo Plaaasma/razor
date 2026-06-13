@@ -32,7 +32,7 @@
         "additional_lines_rgx": [],
         "event_name": "Fastchess Tournament",
         "site": "?",
-        "file": "H:\\RazorBot\\matches\\sprt-nnue2-20260613-012546.pgn",
+        "file": "H:\\RazorBot\\matches\\m1-20260613-015256.pgn",
         "notation": 0,
         "append_file": true,
         "track_nodes": false,
@@ -51,25 +51,25 @@
         "append_file": true
     },
     "sprt": {
-        "alpha": 0.05,
-        "beta": 0.05,
+        "alpha": 0.0,
+        "beta": 0.0,
         "elo0": 0.0,
-        "elo1": 10.0,
+        "elo1": 0.0,
         "model": "normalized",
-        "enabled": true
+        "enabled": false
     },
     "config_name": "config.json",
     "output": 0,
-    "seed": 3281005218121902793,
+    "seed": 7486323789414997008,
     "variant": 0,
     "type": 0,
     "gauntlet_seeds": 1,
-    "ratinginterval": 50,
+    "ratinginterval": 20,
     "scoreinterval": 1,
     "wait": 0,
     "autosaveinterval": 20,
     "games": 2,
-    "rounds": 100000,
+    "rounds": 200,
     "concurrency": 16,
     "force_concurrency": false,
     "recover": true,
@@ -88,9 +88,9 @@
     },
     "engines": [
         {
-            "name": "nnue2",
+            "name": "razor050",
             "dir": "",
-            "cmd": "H:\\RazorBot\\matches\\candidates\\razor-nnue2.exe",
+            "cmd": "H:\\RazorBot\\matches\\masters\\razor-v0.5.0.exe",
             "args": "",
             "restart": false,
             "options": [
@@ -117,9 +117,9 @@
             "variant": 0
         },
         {
-            "name": "v040",
+            "name": "sf18",
             "dir": "",
-            "cmd": "H:\\RazorBot\\matches\\masters\\razor-v0.4.0.exe",
+            "cmd": "H:\\RazorBot\\tools\\stockfish\\stockfish\\stockfish-windows-x86-64-bmi2.exe",
             "args": "",
             "restart": false,
             "options": [
@@ -147,16 +147,16 @@
         }
     ],
     "stats": {
-        "nnue2 vs v040": {
-            "wins": 344,
-            "losses": 239,
-            "draws": 139,
-            "penta_WW": 90,
-            "penta_WD": 57,
-            "penta_WL": 107,
-            "penta_DD": 16,
-            "penta_LD": 50,
-            "penta_LL": 41
+        "razor050 vs sf18": {
+            "wins": 0,
+            "losses": 22,
+            "draws": 0,
+            "penta_WW": 0,
+            "penta_WD": 0,
+            "penta_WL": 0,
+            "penta_DD": 0,
+            "penta_LD": 0,
+            "penta_LL": 11
         }
     }
 }
