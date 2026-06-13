@@ -2,10 +2,10 @@
 //! each position labeled with a fixed-node search score and the eventual game
 //! result (WDL), both from the side-to-move's perspective.
 //!
-//! Output (text, one position per line):
-//!   `<fen> | <score_cp> | <wdl>`
-//! where score_cp is stm-relative centipawns and wdl ∈ {1.0, 0.5, 0.0} is the
-//! game result for the side to move. Text first; binpack conversion later.
+//! Output (text, one position per line, bullet-ingestible):
+//!   `<fen> | <score_cp> | <result>`
+//! where score_cp and result are WHITE-relative (bullet's `convert --from text`
+//! requirement): result ∈ {1.0 win, 0.5 draw, 0.0 loss} for white.
 
 use crate::eval::{MATE_BOUND, Score};
 use crate::movegen::{MoveList, generate_moves};
@@ -62,9 +62,9 @@ pub fn run(out_path: &str, target: usize, seed: u64) -> std::io::Result<(usize, 
         games += 1;
 
         for s in &samples {
-            // result from this position's side-to-move perspective
-            let wdl = if s.stm == Color::White { white_points } else { 1.0 - white_points };
-            writeln!(w, "{} | {} | {:.1}", s.fen, s.score, wdl)?;
+            // bullet wants white-relative score AND result
+            let white_cp = if s.stm == Color::White { s.score } else { -s.score };
+            writeln!(w, "{} | {} | {:.1}", s.fen, white_cp, white_points)?;
             written += 1;
         }
 
