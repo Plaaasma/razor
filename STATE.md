@@ -5,7 +5,21 @@
 ## Current Status
 
 - **Date:** 2026-06-12 (session 2)
-- **Phase:** 2 — Search ladder in progress (Gates G0 + G1 PASSED 2026-06-12)
+- **Phase:** 2 — Search ladder, batch 2 COMPLETE; v0.4.0 tagged (Gates G0 + G1 PASSED 2026-06-12)
+- **Engine version:** Razor 0.4.0 (tag `v0.4.0`, commit 4fbb32c), bench 55,251. Archived `matches\masters\razor-v0.4.0.exe`. LTC confirmation vs v0.3.0 running at tag time.
+
+### Batch 2 final (ladder features 10-18, all SPRT-gated)
+| Feature | Result | Elo |
+|---|---|---|
+| Aspiration windows | PASS | +31.1 |
+| SEE pruning (qsearch) | KEPT neutral (infra) | ~+5, unresolved 8400g |
+| Reverse futility pruning | PASS | +47.7 |
+| Futility pruning | KEPT operator | ~+5, straddles bounds |
+| Check extensions | PASS | +26.8 |
+| Late move pruning | **FAIL, reverted** | −43.5 |
+| MoveOverhead 20ms default | REJECTED, default→0 | −4.8 |
+
+Net batch-2 gain ≈ +110 confirmed (aspiration+rfp+checkext) plus two neutral-positive keeps. SEE retained as required infrastructure for batch-3 (capture-history ordering, SEE-based pruning guards). LMP needs gentler margins + better ordering before retry.
 - **Engine renamed VENDETTA → Razor** (user request). Repo now `H:\RazorBot\razor`, binary `razor.exe`.
 - **Engine version:** Razor 0.3.0 (tag `v0.3.0`) — bench signature 117,145. Binary archived as `matches\masters\razor-v0.3.0.exe`.
 - **Ladder batch 1 COMPLETE — 8/8 SPRT passes** (full ledger in RESULTS.md): MVV-LVA +331, qsearch +371, TT +206, PVS +26, killers +54, history +21.5, NMP ~+164, LMR +116. Chain sum ≈ +1290 self-play Elo over v0.2.0 at STC.
@@ -91,6 +105,24 @@
   4. Ladder batch 3: continuation history, singular extensions, correction history, improving heuristic, capture history/SEE ordering, lazy SMP.
   5. Phase 3 prep when ladder plateaus: v0 datagen harness + bullet training pipeline.
 - **BLOCKED:** none
+
+## NEXT MAJOR WORK — Phase 3: NNUE evaluation (the big Elo jump)
+
+Search ladder is mature (v0.4.0). Hand-crafted material+PSQT eval is now the bottleneck. NNUE is worth +400-700 Elo — far more than any remaining search feature. Plan (brief §5 eval pipeline):
+1. **Datagen harness:** selfplay from randomized book exits, label positions with pinned SF18 at fixed nodes (30-60k), output bullet binpack format. Split local cores + Spark (need SF aarch64 build on Spark — compile from source or use android armv8-dotprod binary, decide then). Target ~100M positions first, scale to 1-3B.
+2. **First net:** bullet on 4070 Ti, `(768→512)x2→1` SCReLU perspective net, quantized. SPRT vs v0.4.0 like any patch.
+3. **NNUE inference in engine:** efficiently-updatable accumulator, int16/int8, AVX2 SIMD (+NEON for Spark). Incremental update on make/unmake.
+4. Iterate net generations; transition to self-generated data once strong.
+Gate G2/G3: beat a ~3000-CCRL open-source engine, then ≥10% vs SF18 STC (= M1). Only then Phase 4 (aggression layer).
+
+Batch-3 search features (smaller, can interleave or defer): continuation/countermove history, singular extensions, correction history, improving heuristic, capture history, lazy SMP (multithreading), retuned LMP. SPSA tuning of search params.
+
+## Operational lessons (session 2)
+
+1. **SPRT bounds vs effect size:** [0,10] can't resolve a true ~+5 feature (random-walks forever). [0,5] barely better for effects near the midpoint. For small features either accept a long test or reframe as non-regression [-5,0] (a positive feature passes fast) or make an honest operator-keep call with games logged. Did the latter for seeprune and futility.
+2. **Queue hygiene:** only ONE `sprt_queue2.ps1` instance at a time. Before launching, check `Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" | Where CommandLine -like '*sprt_queue2.ps1*' -and ProcessId -ne $PID`. Multiple relaunches during the crash hunt left several stale instances fighting over the box.
+3. **Orphan engines block the queue:** killing fastchess leaves razor-*.exe children holding the script's captured pipe → the `&` call never returns → queue hangs. Kill `razor-*` children too, or the next test never starts.
+4. **Cross-machine SPRT:** Spark (aarch64, software-PEXT, ~930k nps) ran lmp/checkext2/timemargin2 in parallel with local tests — roughly doubled throughput. Both engines on a given pair run the same hardware, so Elo deltas stay valid. Builds shipped via git bundle + native `cargo build` per candidate commit.
 
 ## CLOSED BUG — 0xc0000409 "crashes" were stdout pipe panics at match teardown
 
