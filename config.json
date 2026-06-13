@@ -32,7 +32,7 @@
         "additional_lines_rgx": [],
         "event_name": "Fastchess Tournament",
         "site": "?",
-        "file": "H:\\RazorBot\\matches\\m1-20260613-015256.pgn",
+        "file": "H:\\RazorBot\\matches\\ltc-v050-confirm.pgn",
         "notation": 0,
         "append_file": true,
         "track_nodes": false,
@@ -60,16 +60,16 @@
     },
     "config_name": "config.json",
     "output": 0,
-    "seed": 7486323789414997008,
+    "seed": 15144602436547500910,
     "variant": 0,
     "type": 0,
     "gauntlet_seeds": 1,
-    "ratinginterval": 20,
+    "ratinginterval": 25,
     "scoreinterval": 1,
     "wait": 0,
     "autosaveinterval": 20,
     "games": 2,
-    "rounds": 200,
+    "rounds": 100,
     "concurrency": 16,
     "force_concurrency": false,
     "recover": true,
@@ -88,7 +88,7 @@
     },
     "engines": [
         {
-            "name": "razor050",
+            "name": "v050",
             "dir": "",
             "cmd": "H:\\RazorBot\\matches\\masters\\razor-v0.5.0.exe",
             "args": "",
@@ -96,7 +96,7 @@
             "options": [
                 [
                     "Hash",
-                    "16"
+                    "64"
                 ],
                 [
                     "Threads",
@@ -105,9 +105,9 @@
             ],
             "limit": {
                 "tc": {
-                    "increment": 80,
+                    "increment": 400,
                     "fixed_time": 0,
-                    "time": 8000,
+                    "time": 40000,
                     "moves": 0,
                     "timemargin": 0
                 },
@@ -117,15 +117,15 @@
             "variant": 0
         },
         {
-            "name": "sf18",
+            "name": "v040",
             "dir": "",
-            "cmd": "H:\\RazorBot\\tools\\stockfish\\stockfish\\stockfish-windows-x86-64-bmi2.exe",
+            "cmd": "H:\\RazorBot\\matches\\masters\\razor-v0.4.0.exe",
             "args": "",
             "restart": false,
             "options": [
                 [
                     "Hash",
-                    "16"
+                    "64"
                 ],
                 [
                     "Threads",
@@ -134,9 +134,9 @@
             ],
             "limit": {
                 "tc": {
-                    "increment": 80,
+                    "increment": 400,
                     "fixed_time": 0,
-                    "time": 8000,
+                    "time": 40000,
                     "moves": 0,
                     "timemargin": 0
                 },
@@ -147,16 +147,16 @@
         }
     ],
     "stats": {
-        "razor050 vs sf18": {
-            "wins": 0,
-            "losses": 397,
-            "draws": 3,
-            "penta_WW": 0,
-            "penta_WD": 0,
-            "penta_WL": 0,
-            "penta_DD": 0,
-            "penta_LD": 3,
-            "penta_LL": 197
+        "v050 vs v040": {
+            "wins": 120,
+            "losses": 40,
+            "draws": 40,
+            "penta_WW": 33,
+            "penta_WD": 26,
+            "penta_WL": 28,
+            "penta_DD": 4,
+            "penta_LD": 6,
+            "penta_LL": 3
         }
     }
 }

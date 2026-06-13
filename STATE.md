@@ -18,7 +18,7 @@
 ## Phase 3 roadmap toward M1/M2 (the climb)
 
 Ordered by expected Elo-per-effort:
-1. **AVX2-vectorize NNUE** (`nnue.rs` accumulator add/remove + SCReLU output). Still 2.3× slower than PSQT (3.97M vs 9.2M nps). i16 SIMD (16-wide) should recover most of the gap → effectively +depth → Elo. Pure speedup, SPRT as such. **Biggest easy win.**
+1. ~~AVX2-vectorize NNUE~~ **DONE — DEAD END (2026-06-13).** Hand AVX2 intrinsics gave no speedup; rustc+LLVM already auto-vectorize the i16 loops under target-cpu=native (3.5M vs 3.7M nps). Reverted. The NNUE's 2.3× cost vs PSQT is the real work it does, not missed SIMD. **The speed lever is a smaller/faster net or a faster inference layout, not intrinsics.** Note: LTC confirm showed NNUE +148 at 40+0.4 (vs +51 STC) — at the §7 benchmark TC (60+0.6) the speed penalty matters even less, so the eval quality is what counts there.
 2. **gen2 datagen labeled by v0.5.0 NNUE** (not the old PSQT eval). Better labels → better net. Scale to 300M-1B positions. Use the (now correct, white-relative) datagen directly.
 3. **net2: bigger arch** — `(768→768)x2→1` or `1024`, king-buckets later. SPRT each.
 4. **Net-generation loop:** v0.5.0 labels gen2 → net2 → v0.6.0 labels gen3 → net3 ... each generation a few SPRT'd net candidates. This is how real engines climb; expect +50-150 Elo per good generation early, diminishing.

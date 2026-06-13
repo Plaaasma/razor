@@ -101,6 +101,10 @@ impl Accumulator {
         acc
     }
 
+    // Scalar add/remove/eval: the compiler auto-vectorizes these i16 loops
+    // under target-cpu=native (verified hand-written AVX2 intrinsics gave no
+    // speedup over this — 2026-06-13). Keeps the aarch64/Spark build simple too.
+
     #[inline(always)]
     fn add(&mut self, col: Color, pt: usize, sq: Square) {
         let net = net();
