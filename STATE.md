@@ -10,6 +10,15 @@
 - **Strength chain:** v0.2.0 → +1290 (search) → v0.3.0 → +123 LTC → v0.4.0 → +51 NNUE → v0.5.0 → **+209 net2 (gen2 NNUE-labeled)** → v0.6.0. The net-generation loop is the biggest lever now.
 - **v0.6.0 (tag, commit 34fcb7a):** net2, same `(768→512)x2→1` arch as net1 but trained on NNUE-labeled data. bench 26,242. `masters\razor-v0.6.0.exe`. LTC confirm vs v0.5.0 running.
 
+## NEW LEVER: Stockfish public training data (break the self-play ceiling)
+
+Self-play distillation plateaus at the teacher's strength (~2600). To pass it we need a stronger teacher — SF's public NNUE data is labeled by deep SF/Leela (~3500). Brief sanctions this (§2 teacher, §5.2 distill, §5.4 keep SF-labeled data as mix). Original-code rule = engine, not labels.
+- **Source:** robotmoon.com/nnue-training-data → HuggingFace `linrock/test80-2024` (282GB total). Grabbing ONE monthly binpack: `test80-2024-01-jan-2tb7p.min-v2.v6.binpack.zst` (7.7GB compressed, ~300-400M positions, SF/Leela-labeled, syzygy-rescored). HF resolve URL → xethub CDN, curl -L.
+- **DOWNLOADING now** (detached, `matches\download_sf.ps1`, ~37MB/s): → `data\sf\test80-2024-01-jan.binpack` (decompress via zstd). I/O-bound, runs alongside gen4. Log `data\sf\download.log`.
+- **Loader wired:** `examples\razor_net_sf.rs` (768 arch, `SfBinpackLoader` + standard SF filter: ply≥16, not in check, |score|≤10000, quiet best move). Compiles. 80 superbatches (SF data warrants more passes). HEAD-comparable arch to net4 so SF-768 vs selfplay-768 is clean.
+- **Plan:** train SF-data net → SPRT vs v0.6.0. Expect a LARGE jump (3500 teacher vs our 2600). If big: this becomes the strength engine; self-play loop demotes to fine-tuning/style (Phase 4). The mix (SF + self-play, brief §5.4) is the follow-up experiment.
+- **Caveat:** SF data = objective play → pushes Razor NEUTRAL, not aggressive. Fine — Prime Directive #1 is strength first; aggression (Phase 4) layers on top of a strong net.
+
 ## Current: gen4 datagen RUNNING (250M, for a data-matched 768 net)
 
 - **gen4 RUNNING** (launched ~12:10 2026-06-13, v0.6.0/net2-labeled, 28 workers, **250M target**, `data\gen4\`, SeedBase 4000). ETA ~8hr at NNUE datagen speed. HEAD verified net2/512 (bench 26242) before launch.
