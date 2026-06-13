@@ -12,6 +12,22 @@ pub const MATE: Score = 30_000;
 pub const MATE_BOUND: Score = 29_000;
 pub const DRAW: Score = 0;
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
+/// Eval backend switch. NNUE by default; flip to false (UCI `UseNNUE=false`)
+/// for the hand-crafted PSQT eval — used to SPRT NNUE vs PSQT from one binary.
+pub static USE_NNUE: AtomicBool = AtomicBool::new(true);
+
+/// Static eval from the side-to-move's perspective. Dispatches to NNUE or PSQT.
+#[inline(always)]
+pub fn evaluate(pos: &Position) -> Score {
+    if USE_NNUE.load(Ordering::Relaxed) {
+        crate::nnue::evaluate(pos)
+    } else {
+        evaluate_psqt(pos)
+    }
+}
+
 pub const PIECE_VALUE: [Score; 6] = [100, 320, 330, 500, 900, 0];
 
 // PSQTs, white perspective, a1 = index 0. Hand-rolled values reflecting
@@ -87,8 +103,8 @@ const PSQT: [[Score; 64]; 6] = [
     ],
 ];
 
-/// Static eval from the side-to-move's perspective.
-pub fn evaluate(pos: &Position) -> Score {
+/// Hand-crafted material + PSQT eval, side-to-move relative.
+pub fn evaluate_psqt(pos: &Position) -> Score {
     let mut score = 0;
     for pt in PieceType::ALL {
         for sq in BitIter(pos.pieces(Color::White, pt)) {

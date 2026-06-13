@@ -2,6 +2,7 @@ mod bitboard;
 mod datagen;
 mod eval;
 mod movegen;
+mod nnue;
 mod perft;
 mod position;
 mod search;

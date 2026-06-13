@@ -41,6 +41,7 @@ impl Uci {
                     crate::send!("option name Hash type spin default 16 min 1 max 4096");
                     crate::send!("option name Threads type spin default 1 min 1 max 32");
                     crate::send!("option name MoveOverhead type spin default 0 min 0 max 1000");
+                    crate::send!("option name UseNNUE type check default true");
                     crate::send!("uciok");
                 }
                 "isready" => crate::send!("readyok"),
@@ -65,6 +66,10 @@ impl Uci {
                             if let Ok(ms) = value.parse::<u64>() {
                                 self.move_overhead = ms.min(1000);
                             }
+                        } else if name == "usennue" {
+                            let on = value.eq_ignore_ascii_case("true");
+                            crate::eval::USE_NNUE
+                                .store(on, std::sync::atomic::Ordering::Relaxed);
                         }
                     }
                 }
