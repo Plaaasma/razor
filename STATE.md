@@ -119,7 +119,15 @@ Pipeline (all verified end-to-end):
 
 **Training (running, launched ~00:30 2026-06-13):** `tools\bullet\examples\razor_net.rs` (versioned copy `razor\training\razor_net.rs`). Arch `(768→512)x2→1` SCReLU, AdamW, eval_scale 400, QA255 QB64, LinearWDL 0.5→0.8, StepLR 0.001 γ0.3 step15, 40 superbatches (≈40 epochs over 100M). **5.87M pos/s on 4070 Ti → ~17s/superbatch → ~11 min total.** Output nets in `tools\bullet\checkpoints_razor1\`, log `logs\razor1-train.log`.
 
-**NEXT (the substantial Phase 3 work — NNUE inference in engine):**
+### NNUE inference DONE + first net trained (2026-06-13 ~00:45)
+- razor1 net trained: 40 superbatches, 10m11s, **final loss 0.034**, 4070 Ti. Net `nets/razor1.nnue` (quantised 789,568 B).
+- `src/nnue.rs`: embedded net, perspective accumulators (512/side), int16 SCReLU, bullet-exact Chess768 indexing (derived + verified both stm colors). Eval dispatcher in eval.rs + `UseNNUE` UCI option (default true), PSQT kept as fallback (`evaluate_psqt`).
+- **Eval sanity PASSED:** startpos +40, up-knight +695, up-queen +1832, down-queen −1763 (~symmetric). Bare-king endgames muted (+90 KQvK) — out-of-distribution (datagen adjudicates ±2500 before bare kings); search compensates. Perft still exact.
+- **Speed: NNUE 1.74M nps vs PSQT 9.2M (5.3× slower)** — from-scratch accumulator refresh per node. **Incremental update (make/unmake) is the #1 optimization** — should recover most of the gap; SPRT separately as a pure speedup.
+- NNUE bench = 32,890 (PSQT was 55,251). Commit 0a4d625.
+- **SPRT RUNNING (detached):** razor-nnue1 vs razor-v0.4.0 (PSQT), STC [0,10], `matches\sprt_nnue1.ps1` → `sprt-nnue1-results.txt`. The decisive test — does the net's eval beat PSQT even at 5× slower? If yes, NNUE is validated and incremental update is pure upside → likely v0.5.0 + the path to M1.
+
+### Earlier NNUE plan (now mostly done — kept for reference)
 1. Collect trained net `checkpoints_razor1\razor1-40\` (quantised .bin: l0w/l0b i16 ×255, l1w i16 ×64, l1b i16 ×255*64).
 2. Implement NNUE in engine: embed net bytes (`include_bytes!`), perspective accumulator (768→512 per side), int16 SCReLU, int32 output dot, dequantise by /(QA*QB) then *scale/QA... follow bullet's inference doc `tools\bullet\examples\simple.rs` bottom half + `docs\4-saved-networks.md`. Incremental accumulator update on make/unmake (the "efficiently updatable" part) — but a from-scratch refresh per eval is fine for v1, optimize later.
 3. Gate behind eval switch; keep PSQT as fallback. AVX2 SIMD for the accumulator/output (target-cpu=native already on).
