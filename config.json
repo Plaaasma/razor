@@ -148,15 +148,15 @@
     ],
     "stats": {
         "net3 vs v060": {
-            "wins": 361,
-            "losses": 338,
-            "draws": 259,
-            "penta_WW": 64,
-            "penta_WD": 105,
-            "penta_WL": 128,
-            "penta_DD": 36,
-            "penta_LD": 82,
-            "penta_LL": 64
+            "wins": 761,
+            "losses": 788,
+            "draws": 569,
+            "penta_WW": 126,
+            "penta_WD": 211,
+            "penta_WL": 298,
+            "penta_DD": 83,
+            "penta_LD": 192,
+            "penta_LL": 149
         }
     }
 }
