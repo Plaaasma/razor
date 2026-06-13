@@ -1,4 +1,5 @@
 mod bitboard;
+mod datagen;
 mod eval;
 mod movegen;
 mod perft;
@@ -87,6 +88,26 @@ fn main() {
             println!("Nodes searched  : {total}");
             println!("Time (ms)       : {ms}");
             println!("Nodes/second    : {}", total * 1000 / ms);
+        }
+        Some("datagen") => {
+            // datagen <out.txt> <num_positions> [seed]
+            let out = args.get(2).map(String::as_str).unwrap_or("data.txt");
+            let target: usize = args.get(3).and_then(|n| n.parse().ok()).unwrap_or(100_000);
+            let seed: u64 = args.get(4).and_then(|n| n.parse().ok()).unwrap_or(1);
+            let t = std::time::Instant::now();
+            match datagen::run(out, target, seed) {
+                Ok((written, games)) => {
+                    let secs = t.elapsed().as_secs_f64();
+                    println!(
+                        "datagen done: {written} positions from {games} games in {secs:.1}s ({:.0} pos/s) -> {out}",
+                        written as f64 / secs
+                    );
+                }
+                Err(e) => {
+                    eprintln!("datagen error: {e}");
+                    std::process::exit(1);
+                }
+            }
         }
         _ => uci::Uci::new().run(),
     }

@@ -6,7 +6,7 @@
 
 - **Date:** 2026-06-12 (session 2)
 - **Phase:** 2 — Search ladder, batch 2 COMPLETE; v0.4.0 tagged (Gates G0 + G1 PASSED 2026-06-12)
-- **Engine version:** Razor 0.4.0 (tag `v0.4.0`, commit 4fbb32c), bench 55,251. Archived `matches\masters\razor-v0.4.0.exe`. LTC confirmation vs v0.3.0 running at tag time.
+- **Engine version:** Razor 0.4.0 (tag `v0.4.0`, commit 4fbb32c), bench 55,251. Archived `matches\masters\razor-v0.4.0.exe`. **LTC CONFIRMED: +123±33 Elo vs v0.3.0 at 40+0.4 (67%, 200 games)** — batch-2 gains hold at long TC.
 
 ### Batch 2 final (ladder features 10-18, all SPRT-gated)
 | Feature | Result | Elo |
@@ -105,6 +105,15 @@ Net batch-2 gain ≈ +110 confirmed (aspiration+rfp+checkext) plus two neutral-p
   4. Ladder batch 3: continuation history, singular extensions, correction history, improving heuristic, capture history/SEE ordering, lazy SMP.
   5. Phase 3 prep when ladder plateaus: v0 datagen harness + bullet training pipeline.
 - **BLOCKED:** none
+
+## Phase 3 STARTED 2026-06-12 — datagen harness working
+
+- `razor datagen <out.txt> <num_positions> [seed]` implemented (`src/datagen.rs`). Self-play from 4-8 random legal opening plies, each move searched at 5000 nodes, positions filtered (not in check, best move quiet, score not near-mate), labeled `<fen> | <stm_cp> | <wdl>`. Win-adjudication at ±2500cp×6 plies; 50-move/mate/stalemate handled. Deterministic SplitMix64 per seed.
+- Search exposes `root_score` + `silent` flag for datagen (non-functional for normal play; bench unchanged — VERIFY 55,251 still holds after these edits before next release).
+- Smoke: 2241 positions/16 games, **1921 pos/s single-thread**. Distribution healthy: WDL 644/679/918 (W/L/D balanced), scores −3194..+2702, mean ~3 (symmetric stm-relative), 662 unique. Output `H:\RazorBot\data\smoke.txt`.
+- Parallel launcher: `matches\datagen_parallel.ps1` (N workers, distinct seeds, sharded output + meta json). ~28 workers → est. ~50k pos/s → 100M positions in ~35 min. Concatenate shards after.
+- **NEXT:** (a) verify bench still 55,251; (b) run parallel datagen for ~100M positions (gen1); (c) write a binpack converter OR use bullet's text loader if it has one (check bullet docs — may need bulletformat conversion: `fen score wdl` → bulletformat. Check `tools\bullet\docs\3-data.md`); (d) train first net `(768→512)x2→1` SCReLU on 4070 Ti; (e) implement NNUE inference (accumulator, int16, AVX2) in engine behind a UCI/eval switch; (f) SPRT the net vs v0.4.0.
+- Spark role for Phase 3: overflow datagen (needs aarch64 razor build — already have via bundle) + large-dataset shuffle/interleave (128GB RAM). Watch Spark disk (was 89% full).
 
 ## NEXT MAJOR WORK — Phase 3: NNUE evaluation (the big Elo jump)
 

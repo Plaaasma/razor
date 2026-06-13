@@ -32,7 +32,7 @@
         "additional_lines_rgx": [],
         "event_name": "Fastchess Tournament",
         "site": "?",
-        "file": "H:\\RazorBot\\matches\\sprt-futility-20260612-202111.pgn",
+        "file": "H:\\RazorBot\\matches\\ltc-v040-confirm.pgn",
         "notation": 0,
         "append_file": true,
         "track_nodes": false,
@@ -51,25 +51,25 @@
         "append_file": true
     },
     "sprt": {
-        "alpha": 0.05,
-        "beta": 0.05,
+        "alpha": 0.0,
+        "beta": 0.0,
         "elo0": 0.0,
-        "elo1": 5.0,
+        "elo1": 0.0,
         "model": "normalized",
-        "enabled": true
+        "enabled": false
     },
     "config_name": "config.json",
     "output": 0,
-    "seed": 3468084117588398762,
+    "seed": 14701088657344262826,
     "variant": 0,
     "type": 0,
     "gauntlet_seeds": 1,
-    "ratinginterval": 100,
+    "ratinginterval": 25,
     "scoreinterval": 1,
     "wait": 0,
     "autosaveinterval": 20,
     "games": 2,
-    "rounds": 100000,
+    "rounds": 100,
     "concurrency": 16,
     "force_concurrency": false,
     "recover": true,
@@ -88,15 +88,15 @@
     },
     "engines": [
         {
-            "name": "new",
+            "name": "v040",
             "dir": "",
-            "cmd": "H:\\RazorBot\\matches\\candidates\\razor-futility.exe",
+            "cmd": "H:\\RazorBot\\matches\\masters\\razor-v0.4.0.exe",
             "args": "",
             "restart": false,
             "options": [
                 [
                     "Hash",
-                    "16"
+                    "64"
                 ],
                 [
                     "Threads",
@@ -105,9 +105,9 @@
             ],
             "limit": {
                 "tc": {
-                    "increment": 80,
+                    "increment": 400,
                     "fixed_time": 0,
-                    "time": 8000,
+                    "time": 40000,
                     "moves": 0,
                     "timemargin": 0
                 },
@@ -117,15 +117,15 @@
             "variant": 0
         },
         {
-            "name": "base",
+            "name": "v030",
             "dir": "",
-            "cmd": "H:\\RazorBot\\matches\\candidates\\razor-rfp.exe",
+            "cmd": "H:\\RazorBot\\matches\\masters\\razor-lmr.exe",
             "args": "",
             "restart": false,
             "options": [
                 [
                     "Hash",
-                    "16"
+                    "64"
                 ],
                 [
                     "Threads",
@@ -134,9 +134,9 @@
             ],
             "limit": {
                 "tc": {
-                    "increment": 80,
+                    "increment": 400,
                     "fixed_time": 0,
-                    "time": 8000,
+                    "time": 40000,
                     "moves": 0,
                     "timemargin": 0
                 },
@@ -147,16 +147,16 @@
         }
     ],
     "stats": {
-        "new vs base": {
-            "wins": 1170,
-            "losses": 1114,
-            "draws": 1854,
-            "penta_WW": 165,
-            "penta_WD": 522,
-            "penta_WL": 318,
-            "penta_DD": 436,
-            "penta_LD": 460,
-            "penta_LL": 168
+        "v040 vs v030": {
+            "wins": 87,
+            "losses": 19,
+            "draws": 94,
+            "penta_WW": 18,
+            "penta_WD": 40,
+            "penta_WL": 11,
+            "penta_DD": 23,
+            "penta_LD": 8,
+            "penta_LL": 0
         }
     }
 }

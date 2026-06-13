@@ -25,5 +25,6 @@ Standard LTC confirm: 40+0.4s.
 | 16 | 2026-06-12 | MoveOverhead 20ms default | checkext2 → timemargin2 | [-5, 0] | 8+0.08 (Spark) | (3157 games) | unresolved | **REJECTED (operator)** | Observed −4.8, pinned at H0 boundary. 20ms/move reserve ≈ −5 Elo thinking-time tax on idle box. Default set to 0; UCI option retained for laggy GUIs. No further SPRT needed (default 0 = behavior-identical to checkext2) |
 | 17 | 2026-06-12 | Reverse futility pruning — attempt 2 | seeprune → rfp | [0, 5] | 8+0.08 | 461-487-292 | accepted | **PASS** | Elo +47.7±15.1, 1240 games. New master = rfp |
 | 18 | 2026-06-12 | Futility pruning | rfp → futility | [0, 5] | 8+0.08 | 1545-1574-1023 | unresolved | **KEPT (operator)** | +9.9 at 2276g drifting to +4.8 at 4142g — straddles bounds midpoint, won't resolve. Consistently positive (never negative), so kept per neutral/positive-keep protocol. No firm gain claim (~+5). New master = futility |
+| 19 | 2026-06-12 | LTC confirm: v0.4.0 vs v0.3.0 | fixed 200 games | n/a | 40+0.4 | 87-94-19 | n/a | **CONFIRMED** | +123±33 Elo (67.0%). Batch-2 gains hold at LTC (exceeds ~+100 STC expectation). v0.4.0 validated |
 
 <!-- Append rows below as tests complete. Never delete rows. -->

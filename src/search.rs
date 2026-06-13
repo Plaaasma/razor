@@ -44,6 +44,10 @@ pub struct Searcher<'a> {
     /// zobrist keys of the positions preceding the node being visited
     keys: Vec<u64>,
     best_root: Move,
+    /// root score (stm-relative cp) of the last completed iteration; used by datagen
+    pub root_score: Score,
+    /// suppress `info` output (datagen runs millions of searches)
+    pub silent: bool,
     /// two killer moves per ply: quiets that caused beta cutoffs
     killers: [[Move; 2]; MAX_PLY],
     /// butterfly history: [stm][from][to] cutoff counter for quiet ordering
@@ -63,6 +67,8 @@ impl<'a> Searcher<'a> {
             stopped: false,
             keys: Vec::with_capacity(1024),
             best_root: MOVE_NONE,
+            root_score: 0,
+            silent: false,
             killers: [[MOVE_NONE; 2]; MAX_PLY],
             history: Box::new([[[0; 64]; 64]; 2]),
         }
@@ -125,14 +131,17 @@ impl<'a> Searcher<'a> {
                 break;
             }
             prev_score = score;
+            self.root_score = score;
             best = self.best_root;
             let ms = self.start.elapsed().as_millis() as u64;
             let nps = if ms > 0 { self.nodes * 1000 / ms } else { 0 };
-            crate::send!(
-                "info depth {depth} score {} nodes {} nps {nps} time {ms} pv {best}",
-                format_score(score),
-                self.nodes
-            );
+            if !self.silent {
+                crate::send!(
+                    "info depth {depth} score {} nodes {} nps {nps} time {ms} pv {best}",
+                    format_score(score),
+                    self.nodes
+                );
+            }
             if ms >= self.soft_limit_ms {
                 break;
             }
