@@ -106,6 +106,26 @@ Net batch-2 gain ≈ +110 confirmed (aspiration+rfp+checkext) plus two neutral-p
   5. Phase 3 prep when ladder plateaus: v0 datagen harness + bullet training pipeline.
 - **BLOCKED:** none
 
+## Phase 3 — data pipeline COMPLETE, first net TRAINING (2026-06-13)
+
+**gen1 dataset: 100,003,433 positions, training-ready.**
+Pipeline (all verified end-to-end):
+1. `razor datagen` → `H:\RazorBot\data\gen1\shard-{0..27}.txt` (stm-relative; gen1 made before the white-rel fix)
+2. `training\convert_gen1.py` → `data\gen1_wr\` (white-relative — bullet requires white-rel score AND result; flip = negate score + `1-result` when black to move)
+3. `bullet-utils convert --from text` → `data\gen1_bin\shard-*.bin` (bulletformat, 32 B/pos)
+4. `bullet-utils interleave` → **`H:\RazorBot\data\gen1.bin`** (2.98 GB, 100,003,433 positions, the training file)
+- WDL balance: ~23% W / 54% D / 23% L (healthy; engine is ~equal-strength selfplay so lots of draws).
+- **DATAGEN SOURCE NOW EMITS WHITE-RELATIVE** (commit b2539f0) — gen2+ skip the convert_gen1.py step; feed bullet-utils convert directly.
+
+**Training (running, launched ~00:30 2026-06-13):** `tools\bullet\examples\razor_net.rs` (versioned copy `razor\training\razor_net.rs`). Arch `(768→512)x2→1` SCReLU, AdamW, eval_scale 400, QA255 QB64, LinearWDL 0.5→0.8, StepLR 0.001 γ0.3 step15, 40 superbatches (≈40 epochs over 100M). **5.87M pos/s on 4070 Ti → ~17s/superbatch → ~11 min total.** Output nets in `tools\bullet\checkpoints_razor1\`, log `logs\razor1-train.log`.
+
+**NEXT (the substantial Phase 3 work — NNUE inference in engine):**
+1. Collect trained net `checkpoints_razor1\razor1-40\` (quantised .bin: l0w/l0b i16 ×255, l1w i16 ×64, l1b i16 ×255*64).
+2. Implement NNUE in engine: embed net bytes (`include_bytes!`), perspective accumulator (768→512 per side), int16 SCReLU, int32 output dot, dequantise by /(QA*QB) then *scale/QA... follow bullet's inference doc `tools\bullet\examples\simple.rs` bottom half + `docs\4-saved-networks.md`. Incremental accumulator update on make/unmake (the "efficiently updatable" part) — but a from-scratch refresh per eval is fine for v1, optimize later.
+3. Gate behind eval switch; keep PSQT as fallback. AVX2 SIMD for the accumulator/output (target-cpu=native already on).
+4. SPRT NNUE-eval vs v0.4.0 (PSQT). Expect a large jump. Bench signature WILL change (new eval) — re-baseline.
+5. If it passes: tag v0.5.0, LTC confirm, then M1 check (≥10% vs SF18 STC balanced book).
+
 ## Phase 3 STARTED 2026-06-12 — datagen harness working
 
 - `razor datagen <out.txt> <num_positions> [seed]` implemented (`src/datagen.rs`). Self-play from 4-8 random legal opening plies, each move searched at 5000 nodes, positions filtered (not in check, best move quiet, score not near-mate), labeled `<fen> | <stm_cp> | <wdl>`. Win-adjudication at ±2500cp×6 plies; 50-move/mate/stalemate handled. Deterministic SplitMix64 per seed.
