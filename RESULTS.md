@@ -23,5 +23,6 @@ Standard LTC confirm: 40+0.4s.
 | 14 | 2026-06-12 | RFP — attempt 1 | seeprune → rfp | [0, 5] | 8+0.08 | (769 games) | killed | **ABORTED (operator)** | Observed +71.9 (60.2%) — overwhelming but test killed in queue-cleanup crossfire before formal resolution. Re-running clean; see row for attempt 2 |
 | 15 | 2026-06-12 | SEE pruning — final disposition | aspiration → seeprune | [-5, 0] + history | 8+0.08 | (2491 games attempt 3) | unresolved | **KEPT (operator, neutral)** | ~8400 games across 3 attempts: +6.0/2717, +0.5/3212, +13.7/2491 — all ≥0, no formal resolution (effect sits at bounds). No gain claim. SEE retained as infrastructure for batch-3 ordering/guards |
 | 16 | 2026-06-12 | MoveOverhead 20ms default | checkext2 → timemargin2 | [-5, 0] | 8+0.08 (Spark) | (3157 games) | unresolved | **REJECTED (operator)** | Observed −4.8, pinned at H0 boundary. 20ms/move reserve ≈ −5 Elo thinking-time tax on idle box. Default set to 0; UCI option retained for laggy GUIs. No further SPRT needed (default 0 = behavior-identical to checkext2) |
+| 17 | 2026-06-12 | Reverse futility pruning — attempt 2 | seeprune → rfp | [0, 5] | 8+0.08 | 461-487-292 | accepted | **PASS** | Elo +47.7±15.1, 1240 games. New master = rfp |
 
 <!-- Append rows below as tests complete. Never delete rows. -->
