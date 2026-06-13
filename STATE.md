@@ -10,6 +10,16 @@
 - **Strength chain:** v0.2.0 → +1290 (search) → v0.3.0 → +123 LTC → v0.4.0 → +51 NNUE → v0.5.0 → **+209 net2 (gen2 NNUE-labeled)** → v0.6.0. The net-generation loop is the biggest lever now.
 - **v0.6.0 (tag, commit 34fcb7a):** net2, same `(768→512)x2→1` arch as net1 but trained on NNUE-labeled data. bench 26,242. `masters\razor-v0.6.0.exe`. LTC confirm vs v0.5.0 running.
 
+## Net-gen loop iteration 2: gen3 RUNNING + net3 goes bigger (768)
+
+- **gen3 datagen RUNNING** (launched ~07:25, v0.6.0/net2-labeled, 28 workers, 100M target, `data\gen3\`, SeedBase 3000). ETA ~3hr. HEAD verified net2 (bench 26242) before launch so gen3 uses the strongest net.
+- **net3 plan: BIGGER net `(768→768)x2→1`** to absorb more from the now-excellent labels (net2 likely saturated 512 width on data quality). When gen3 done:
+  1. convert→interleave → `data\gen3.bin`
+  2. training\razor_net3.rs: HIDDEN_SIZE 768, net_id razor3, data gen3.bin
+  3. **src\nnue.rs HIDDEN const 512→768** (load()/accumulator/eval all use HIDDEN so they auto-resize; quantised.bin grows: 768*768*2 + 768*2 + 1536*2 + pad). Rebuild, eval-sanity, perft-still-exact.
+  4. SPRT net3(768, gen3) vs v0.6.0(512, gen2). Two variables change (arch + data) — if it passes big, great; if flat, run a 512-on-gen3 control to separate arch from data. 
+- Speed note: 768 width ≈ 1.5× the accumulator work → slightly slower nps; net it should still win on eval. Watch the STC-vs-LTC split.
+
 ## KEY FINDING: the net-generation loop drives strength (2026-06-13)
 
 net2 = net1's arch trained on data labeled by the v0.5.0 NNUE engine (vs net1's PSQT-labeled gen1). **+208.8 Elo at STC.** Mechanism: the teacher jumped from a ~1500 hand-eval to a ~2400 NNUE-engine-at-5000-nodes. Label quality dominates at this stage. **Loop:** vN labels genN+1 → train netN+1 → vN+1. Expect gen3 (labeled by v0.6.0 ~2600+) → net3 to gain again (diminishing as the teacher's own ceiling nears). This + bigger nets is the path; AVX2/micro-opt is not.
