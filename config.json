@@ -148,14 +148,14 @@
     ],
     "stats": {
         "v060 vs v050": {
-            "wins": 124,
-            "losses": 19,
-            "draws": 35,
-            "penta_WW": 45,
-            "penta_WD": 23,
+            "wins": 138,
+            "losses": 20,
+            "draws": 42,
+            "penta_WW": 51,
+            "penta_WD": 25,
             "penta_WL": 11,
-            "penta_DD": 4,
-            "penta_LD": 4,
+            "penta_DD": 6,
+            "penta_LD": 5,
             "penta_LL": 2
         }
     }

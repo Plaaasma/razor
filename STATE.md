@@ -10,9 +10,12 @@
 - **Strength chain:** v0.2.0 → +1290 (search) → v0.3.0 → +123 LTC → v0.4.0 → +51 NNUE → v0.5.0 → **+209 net2 (gen2 NNUE-labeled)** → v0.6.0. The net-generation loop is the biggest lever now.
 - **v0.6.0 (tag, commit 34fcb7a):** net2, same `(768→512)x2→1` arch as net1 but trained on NNUE-labeled data. bench 26,242. `masters\razor-v0.6.0.exe`. LTC confirm vs v0.5.0 running.
 
-## Net-gen loop iteration 2: gen3 RUNNING + net3 goes bigger (768)
+## Net-gen loop iteration 2: net3 (768) TRAINING
 
-- **gen3 datagen RUNNING** (launched ~07:25, v0.6.0/net2-labeled, 28 workers, 100M target, `data\gen3\`, SeedBase 3000). ETA ~3hr. HEAD verified net2 (bench 26242) before launch so gen3 uses the strongest net.
+- **gen3 DONE** (104.7M positions, v0.6.0-labeled) → `data\gen3.bin` (100,002,013 positions).
+- **net3 TRAINING** at 5.05M pos/s on 4070 Ti — `(768→768)x2→1` (wider than net2's 512), `checkpoints_razor3\`, log `logs\razor3-train.log`. ~13 min.
+- **net3 has TWO changes vs v0.6.0:** wider hidden (512→768) AND better labels (gen3 by v0.6.0 vs gen2 by v0.5.0). If it passes big, both helped; if flat/small, next session run a 512-on-gen3 control to separate width from data.
+- **768 build steps (after training):** copy quantised.bin→nets\razor3.nnue; src\nnue.rs HIDDEN 512→768 + include_bytes razor3.nnue; rebuild; VERIFY eval sanity + perft exact + release-dbg incremental-acc assert (768 layout). The nnue.rs load()/accumulator/eval all key off HIDDEN so they resize automatically. quantised.bin for 768: 768*768*2 + 768*2 + 1536*2 + pad ≈ 1.18 MB.
 - **net3 plan: BIGGER net `(768→768)x2→1`** to absorb more from the now-excellent labels (net2 likely saturated 512 width on data quality). When gen3 done:
   1. convert→interleave → `data\gen3.bin`
   2. training\razor_net3.rs: HIDDEN_SIZE 768, net_id razor3, data gen3.bin
