@@ -48,6 +48,10 @@ pub struct Searcher<'a> {
     pub root_score: Score,
     /// suppress `info` output (datagen runs millions of searches)
     pub silent: bool,
+    /// NNUE accumulator stack, one per ply (incremental update); index = ply
+    acc: Vec<crate::nnue::Accumulator>,
+    /// NNUE active this search (captured from the global flag at go())
+    use_nnue: bool,
     /// two killer moves per ply: quiets that caused beta cutoffs
     killers: [[Move; 2]; MAX_PLY],
     /// butterfly history: [stm][from][to] cutoff counter for quiet ordering
@@ -69,6 +73,8 @@ impl<'a> Searcher<'a> {
             best_root: MOVE_NONE,
             root_score: 0,
             silent: false,
+            acc: vec![crate::nnue::Accumulator::zeroed(); MAX_PLY + 2],
+            use_nnue: true,
             killers: [[MOVE_NONE; 2]; MAX_PLY],
             history: Box::new([[[0; 64]; 64]; 2]),
         }
@@ -76,6 +82,10 @@ impl<'a> Searcher<'a> {
 
     /// `history` = zobrist keys of all game positions strictly BEFORE `pos`.
     pub fn go(&mut self, pos: &Position, limits: &Limits, history: &[u64]) -> Move {
+        self.use_nnue = eval::USE_NNUE.load(std::sync::atomic::Ordering::Relaxed);
+        if self.use_nnue {
+            self.acc[0] = crate::nnue::Accumulator::refresh(pos);
+        }
         self.start = Instant::now();
         self.nodes = 0;
         self.stopped = false;
@@ -166,6 +176,25 @@ impl<'a> Searcher<'a> {
         }
     }
 
+    /// Eval at the node for `ply`: NNUE from the incremental accumulator, or
+    /// the hand-crafted PSQT.
+    #[inline(always)]
+    fn eval(&self, pos: &Position, ply: usize) -> Score {
+        if self.use_nnue {
+            #[cfg(debug_assertions)]
+            {
+                let fresh = crate::nnue::Accumulator::refresh(pos);
+                debug_assert!(
+                    self.acc[ply].w == fresh.w && self.acc[ply].b == fresh.b,
+                    "incremental accumulator diverged from refresh at ply {ply}"
+                );
+            }
+            self.acc[ply].eval(pos.stm)
+        } else {
+            eval::evaluate_psqt(pos)
+        }
+    }
+
     fn is_repetition(&self, key: u64, halfmove: u8) -> bool {
         let lookback = (halfmove as usize).min(self.keys.len());
         // same side to move only: step 2; skip the position one ply back
@@ -218,7 +247,7 @@ impl<'a> Searcher<'a> {
         }
 
         let in_check = pos.in_check();
-        let static_eval = if in_check { -MATE } else { eval::evaluate(pos) };
+        let static_eval = if in_check { -MATE } else { self.eval(pos, ply) };
 
         // reverse futility: eval is so far above beta that even a large
         // margin per remaining ply can't bring it back down
@@ -245,6 +274,9 @@ impl<'a> Searcher<'a> {
                 != pos.pieces(pos.stm, PieceType::Pawn) | pos.pieces(pos.stm, PieceType::King)
         {
             let child = pos.make_null();
+            if self.use_nnue {
+                self.acc[ply + 1] = self.acc[ply].clone();
+            }
             self.keys.push(pos.key);
             let score = -self.negamax(&child, depth - 3, -beta, -beta + 1, ply + 1, true);
             self.keys.pop();
@@ -288,6 +320,10 @@ impl<'a> Searcher<'a> {
                 continue;
             }
             let child = pos.make(mv);
+            if self.use_nnue {
+                let a = crate::nnue::apply(&self.acc[ply], pos, mv);
+                self.acc[ply + 1] = a;
+            }
             // PVS: full window only for the first move; the rest get a null
             // window probe (late quiets at reduced depth — LMR), re-searched
             // on fail-high
@@ -364,7 +400,7 @@ impl<'a> Searcher<'a> {
             return 0;
         }
         if ply >= MAX_PLY - 1 {
-            return eval::evaluate(pos);
+            return self.eval(pos, ply);
         }
 
         let in_check = pos.in_check();
@@ -372,7 +408,7 @@ impl<'a> Searcher<'a> {
         if in_check {
             best = -MATE + ply as Score;
         } else {
-            best = eval::evaluate(pos);
+            best = self.eval(pos, ply);
             if best >= beta {
                 return best;
             }
@@ -399,6 +435,10 @@ impl<'a> Searcher<'a> {
                 continue;
             }
             let child = pos.make(mv);
+            if self.use_nnue {
+                let a = crate::nnue::apply(&self.acc[ply], pos, mv);
+                self.acc[ply + 1] = a;
+            }
             let score = -self.qsearch(&child, -beta, -alpha, ply + 1);
             if self.stopped {
                 break;

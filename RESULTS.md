@@ -26,5 +26,6 @@ Standard LTC confirm: 40+0.4s.
 | 17 | 2026-06-12 | Reverse futility pruning — attempt 2 | seeprune → rfp | [0, 5] | 8+0.08 | 461-487-292 | accepted | **PASS** | Elo +47.7±15.1, 1240 games. New master = rfp |
 | 18 | 2026-06-12 | Futility pruning | rfp → futility | [0, 5] | 8+0.08 | 1545-1574-1023 | unresolved | **KEPT (operator)** | +9.9 at 2276g drifting to +4.8 at 4142g — straddles bounds midpoint, won't resolve. Consistently positive (never negative), so kept per neutral/positive-keep protocol. No firm gain claim (~+5). New master = futility |
 | 19 | 2026-06-12 | LTC confirm: v0.4.0 vs v0.3.0 | fixed 200 games | n/a | 40+0.4 | 87-94-19 | n/a | **CONFIRMED** | +123±33 Elo (67.0%). Batch-2 gains hold at LTC (exceeds ~+100 STC expectation). v0.4.0 validated |
+| 20 | 2026-06-13 | NNUE eval (razor1, from-scratch acc) | v0.4.0 PSQT → nnue1 | [0, 10] | 8+0.08 | 319-177-402 | H0 −2.97 | **FAIL −32±21** | 898 games. Eval correct (sanity passed) but from-scratch accumulator = 5.3× slower (1.74M vs 9.2M nps) → loses on depth at STC. Notably sharp: WL/DD 14.78, lots of decisive games. FIX = incremental accumulator update (next), then re-SPRT |
 
 <!-- Append rows below as tests complete. Never delete rows. -->
