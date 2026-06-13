@@ -9,6 +9,23 @@
 - **Engine version:** Razor 0.5.0 (tag `v0.5.0`, commit 9ecf34e). NNUE `(768→512)x2→1` razor1 net, incremental dual-perspective accumulator, 3.97M nps. Archived `matches\masters\razor-v0.5.0.exe`. PSQT eval retained as `UseNNUE=false` fallback.
 - **Strength chain:** v0.2.0 → +1290 (search) → v0.3.0 → +123 LTC → v0.4.0 → +51 (NNUE) → v0.5.0. Razor is now a real NNUE engine.
 
+## MILESTONE M1 — NOT MET (honest, 2026-06-13)
+
+**Razor v0.5.0 scored 0.38% vs SF18** (0W/397L/3D, 400 games, STC balanced book). Elo gap ≈ **−970**. M1 needs ≥10% (within ~400 Elo).
+- Reality: SF18 single-thread STC ≈ 3400+ Elo; Razor v0.5.0 ≈ 2400-2500. The gap is ~900-1000 Elo — Razor is a competent club/expert-strength engine, SF18 is superhuman. M1 (let alone the M4 project goal of *beating* SF from UHO books) is a long, multi-net-generation road. No sugar-coating: this is the start of the climb, not the end.
+- The +50.9 NNUE gain and the whole search ladder are real and verified — but "verified internal gains" and "absolute strength vs SF" are different axes. We've been measuring the former; M1 is the first measurement of the latter, and it says there's a mountain left.
+
+## Phase 3 roadmap toward M1/M2 (the climb)
+
+Ordered by expected Elo-per-effort:
+1. **AVX2-vectorize NNUE** (`nnue.rs` accumulator add/remove + SCReLU output). Still 2.3× slower than PSQT (3.97M vs 9.2M nps). i16 SIMD (16-wide) should recover most of the gap → effectively +depth → Elo. Pure speedup, SPRT as such. **Biggest easy win.**
+2. **gen2 datagen labeled by v0.5.0 NNUE** (not the old PSQT eval). Better labels → better net. Scale to 300M-1B positions. Use the (now correct, white-relative) datagen directly.
+3. **net2: bigger arch** — `(768→768)x2→1` or `1024`, king-buckets later. SPRT each.
+4. **Net-generation loop:** v0.5.0 labels gen2 → net2 → v0.6.0 labels gen3 → net3 ... each generation a few SPRT'd net candidates. This is how real engines climb; expect +50-150 Elo per good generation early, diminishing.
+5. **Search batch 3** (continuation history, singular extensions, corrhist, improving, capture history, lazy SMP) — interleave; each +5-30.
+6. **SPSA** tune search + eval-blend params once stable.
+- Realistic near-term: get NNUE speed up (AVX2) + 2-3 net generations → maybe close to M1 (≥10% vs SF) over many sessions. M2/M3/M4 are long-horizon.
+
 - **Phase 2 history (done):** Search ladder batch 2 COMPLETE; v0.4.0 tagged (Gates G0 + G1 PASSED 2026-06-12)
 - **Engine version:** Razor 0.4.0 (tag `v0.4.0`, commit 4fbb32c), bench 55,251. Archived `matches\masters\razor-v0.4.0.exe`. **LTC CONFIRMED: +123±33 Elo vs v0.3.0 at 40+0.4 (67%, 200 games)** — batch-2 gains hold at long TC.
 

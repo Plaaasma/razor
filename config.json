@@ -149,14 +149,14 @@
     "stats": {
         "razor050 vs sf18": {
             "wins": 0,
-            "losses": 22,
-            "draws": 0,
+            "losses": 397,
+            "draws": 3,
             "penta_WW": 0,
             "penta_WD": 0,
             "penta_WL": 0,
             "penta_DD": 0,
-            "penta_LD": 0,
-            "penta_LL": 11
+            "penta_LD": 3,
+            "penta_LL": 197
         }
     }
 }
