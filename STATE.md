@@ -10,7 +10,13 @@
 - **Strength chain:** v0.2.0 → +1290 (search) → v0.3.0 → +123 LTC → v0.4.0 → +51 NNUE → v0.5.0 → **+209 net2 (gen2 NNUE-labeled)** → v0.6.0. The net-generation loop is the biggest lever now.
 - **v0.6.0 (tag, commit 34fcb7a):** net2, same `(768→512)x2→1` arch as net1 but trained on NNUE-labeled data. bench 26,242. `masters\razor-v0.6.0.exe`. LTC confirm vs v0.5.0 running.
 
-## Net-gen loop iteration 2: net3 (768) TRAINING
+## Current: gen4 datagen RUNNING (250M, for a data-matched 768 net)
+
+- **gen4 RUNNING** (launched ~12:10 2026-06-13, v0.6.0/net2-labeled, 28 workers, **250M target**, `data\gen4\`, SeedBase 4000). ETA ~8hr at NNUE datagen speed. HEAD verified net2/512 (bench 26242) before launch.
+- **net4 plan:** `(768→768)x2→1` on gen4's 250M (vs net3's 768-on-100M that starved). Maybe also bump superbatches if 250M warrants. Then SPRT vs v0.6.0. This isolates "was 768 just data-starved?" — if net4 passes, yes; if flat, width is a dead end and the lever is depth or more data.
+- **Disk watch:** gen1-4 will total ~84GB; H: has 154GB free. User is ordering an HDD for the eventual 1TB need (1-3B positions). For now: could reclaim ~25GB by deleting gen1/gen2/gen3 text shards (already converted to .bin; reproducible from seed) — NOT done yet, no need.
+
+## (history) Net-gen loop iteration 2: net3 (768) TRAINING
 
 - **gen3 DONE** (104.7M positions, v0.6.0-labeled) → `data\gen3.bin` (100,002,013 positions).
 - **net3 TRAINING** at 5.05M pos/s on 4070 Ti — `(768→768)x2→1` (wider than net2's 512), `checkpoints_razor3\`, log `logs\razor3-train.log`. ~13 min.
@@ -23,12 +29,11 @@
   4. SPRT net3(768, gen3) vs v0.6.0(512, gen2). Two variables change (arch + data) — if it passes big, great; if flat, run a 512-on-gen3 control to separate arch from data. 
 - Speed note: 768 width ≈ 1.5× the accumulator work → slightly slower nps; net it should still win on eval. Watch the STC-vs-LTC split.
 
-## net3 (768/gen3) — MARGINAL so far (~+7 over 941 games, unresolved)
+## net3 (768/gen3) — REJECTED ~−4 (2026-06-13). Lesson: don't go wide on thin data.
 
-Interim read (2026-06-13 ~11:40): net3 +7.4/941 vs v0.6.0 — drifting to bounds midpoint, slow [0,10] grind. **The 768 width did NOT unlock a big gain.** Two reasons:
-1. **Diminishing label jump:** net2's +209 came from PSQT→NNUE teacher (~900 Elo teacher upgrade). gen3's labeler (v0.6.0) is only ~+236 over gen2's (v0.5.0) — much smaller teacher improvement → smaller data-quality gain.
-2. **Data-starved:** a 768 net has 2.25× the params of 512; 100M positions is thin for it (underfit). 768 wants 200-300M+.
-**Decision pending SPRT resolution.** If net3 passes marginally: keep but note width≈neutral on this data. If it's truly ~0: revert HEAD to net2/512 (v0.6.0 line), and the next lever is **MORE DATA** (200-300M gen) not width, OR more net generations (each smaller now). Either way the cheap-Elo era is over — we're in the +tens-per-iteration grind, ~760 Elo from SF. Honest.
+net3 SPRT vs v0.6.0: +7 at 941 games drifted to **−4.3 at 2116** → true value ~0/slightly negative. Killed. **768 width on 100M = data-starved** (2.25× the params of 512, underfit) AND slower eval → no net gain, slight loss. **HEAD reverted to net2/512** (bench 26242); v0.6.0 stays the line.
+- Two compounding causes the +209 net2 jump won't repeat cheaply: (1) the teacher-upgrade per generation is shrinking (PSQT→NNUE was ~900 Elo; NNUE-gen→NNUE-gen is ~200), (2) a bigger net needs proportionally more data.
+- **Current experiment: gen4 = 250M positions** (v0.6.0-labeled) to properly feed a wide net. Then net4 = 768 on 250M (data-matched this time). If 768-on-250M beats v0.6.0, width was just data-starved; if still flat, the lever is net DEPTH (add a layer) or even-more-data, not width.
 
 ## KEY FINDING: the net-generation loop drives strength (2026-06-13)
 
