@@ -23,7 +23,10 @@ pub struct Limits {
 
 impl Limits {
     pub fn infinite() -> Limits {
-        Limits { time: None, inc: None, movetime: None, depth: None, nodes: None, overhead: 20 }
+        // overhead default 0: the 20ms reserve measured ≈−5 Elo at STC on an
+        // idle box (SPRT timemargin2, 3157 games). Users with laggy GUIs can
+        // raise the MoveOverhead UCI option.
+        Limits { time: None, inc: None, movetime: None, depth: None, nodes: None, overhead: 0 }
     }
 }
 

@@ -18,7 +18,7 @@ pub struct Uci {
 
 impl Uci {
     pub fn new() -> Uci {
-        Uci { pos: Position::startpos(), history: Vec::new(), tt: Tt::new(16), move_overhead: 20 }
+        Uci { pos: Position::startpos(), history: Vec::new(), tt: Tt::new(16), move_overhead: 0 }
     }
 
     pub fn run(&mut self) {
@@ -40,7 +40,7 @@ impl Uci {
                     crate::send!("id author Liam");
                     crate::send!("option name Hash type spin default 16 min 1 max 4096");
                     crate::send!("option name Threads type spin default 1 min 1 max 32");
-                    crate::send!("option name MoveOverhead type spin default 20 min 0 max 1000");
+                    crate::send!("option name MoveOverhead type spin default 0 min 0 max 1000");
                     crate::send!("uciok");
                 }
                 "isready" => crate::send!("readyok"),
