@@ -23,6 +23,13 @@
   4. SPRT net3(768, gen3) vs v0.6.0(512, gen2). Two variables change (arch + data) — if it passes big, great; if flat, run a 512-on-gen3 control to separate arch from data. 
 - Speed note: 768 width ≈ 1.5× the accumulator work → slightly slower nps; net it should still win on eval. Watch the STC-vs-LTC split.
 
+## net3 (768/gen3) — MARGINAL so far (~+7 over 941 games, unresolved)
+
+Interim read (2026-06-13 ~11:40): net3 +7.4/941 vs v0.6.0 — drifting to bounds midpoint, slow [0,10] grind. **The 768 width did NOT unlock a big gain.** Two reasons:
+1. **Diminishing label jump:** net2's +209 came from PSQT→NNUE teacher (~900 Elo teacher upgrade). gen3's labeler (v0.6.0) is only ~+236 over gen2's (v0.5.0) — much smaller teacher improvement → smaller data-quality gain.
+2. **Data-starved:** a 768 net has 2.25× the params of 512; 100M positions is thin for it (underfit). 768 wants 200-300M+.
+**Decision pending SPRT resolution.** If net3 passes marginally: keep but note width≈neutral on this data. If it's truly ~0: revert HEAD to net2/512 (v0.6.0 line), and the next lever is **MORE DATA** (200-300M gen) not width, OR more net generations (each smaller now). Either way the cheap-Elo era is over — we're in the +tens-per-iteration grind, ~760 Elo from SF. Honest.
+
 ## KEY FINDING: the net-generation loop drives strength (2026-06-13)
 
 net2 = net1's arch trained on data labeled by the v0.5.0 NNUE engine (vs net1's PSQT-labeled gen1). **+208.8 Elo at STC.** Mechanism: the teacher jumped from a ~1500 hand-eval to a ~2400 NNUE-engine-at-5000-nodes. Label quality dominates at this stage. **Loop:** vN labels genN+1 → train netN+1 → vN+1. Expect gen3 (labeled by v0.6.0 ~2600+) → net3 to gain again (diminishing as the teacher's own ceiling nears). This + bigger nets is the path; AVX2/micro-opt is not.

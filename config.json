@@ -32,7 +32,7 @@
         "additional_lines_rgx": [],
         "event_name": "Fastchess Tournament",
         "site": "?",
-        "file": "H:\\RazorBot\\matches\\ltc-v060-confirm.pgn",
+        "file": "H:\\RazorBot\\matches\\sprt-net3-20260613-113636.pgn",
         "notation": 0,
         "append_file": true,
         "track_nodes": false,
@@ -51,25 +51,25 @@
         "append_file": true
     },
     "sprt": {
-        "alpha": 0.0,
-        "beta": 0.0,
+        "alpha": 0.05,
+        "beta": 0.05,
         "elo0": 0.0,
-        "elo1": 0.0,
+        "elo1": 10.0,
         "model": "normalized",
-        "enabled": false
+        "enabled": true
     },
     "config_name": "config.json",
     "output": 0,
-    "seed": 8750423937569614303,
+    "seed": 10490029640014810854,
     "variant": 0,
     "type": 0,
     "gauntlet_seeds": 1,
-    "ratinginterval": 25,
+    "ratinginterval": 50,
     "scoreinterval": 1,
     "wait": 0,
     "autosaveinterval": 20,
     "games": 2,
-    "rounds": 100,
+    "rounds": 100000,
     "concurrency": 16,
     "force_concurrency": false,
     "recover": true,
@@ -88,15 +88,15 @@
     },
     "engines": [
         {
-            "name": "v060",
+            "name": "net3",
             "dir": "",
-            "cmd": "H:\\RazorBot\\matches\\masters\\razor-v0.6.0.exe",
+            "cmd": "H:\\RazorBot\\matches\\candidates\\razor-net3.exe",
             "args": "",
             "restart": false,
             "options": [
                 [
                     "Hash",
-                    "64"
+                    "16"
                 ],
                 [
                     "Threads",
@@ -105,9 +105,9 @@
             ],
             "limit": {
                 "tc": {
-                    "increment": 400,
+                    "increment": 80,
                     "fixed_time": 0,
-                    "time": 40000,
+                    "time": 8000,
                     "moves": 0,
                     "timemargin": 0
                 },
@@ -117,15 +117,15 @@
             "variant": 0
         },
         {
-            "name": "v050",
+            "name": "v060",
             "dir": "",
-            "cmd": "H:\\RazorBot\\matches\\masters\\razor-v0.5.0.exe",
+            "cmd": "H:\\RazorBot\\matches\\masters\\razor-v0.6.0.exe",
             "args": "",
             "restart": false,
             "options": [
                 [
                     "Hash",
-                    "64"
+                    "16"
                 ],
                 [
                     "Threads",
@@ -134,9 +134,9 @@
             ],
             "limit": {
                 "tc": {
-                    "increment": 400,
+                    "increment": 80,
                     "fixed_time": 0,
-                    "time": 40000,
+                    "time": 8000,
                     "moves": 0,
                     "timemargin": 0
                 },
@@ -147,16 +147,16 @@
         }
     ],
     "stats": {
-        "v060 vs v050": {
-            "wins": 138,
-            "losses": 20,
-            "draws": 42,
-            "penta_WW": 51,
-            "penta_WD": 25,
-            "penta_WL": 11,
-            "penta_DD": 6,
-            "penta_LD": 5,
-            "penta_LL": 2
+        "net3 vs v060": {
+            "wins": 361,
+            "losses": 338,
+            "draws": 259,
+            "penta_WW": 64,
+            "penta_WD": 105,
+            "penta_WL": 128,
+            "penta_DD": 36,
+            "penta_LD": 82,
+            "penta_LL": 64
         }
     }
 }
