@@ -185,6 +185,14 @@ impl Position {
         } else {
             parse_square(parts[3]).ok_or_else(|| format!("bad FEN ep: {fen}"))?
         };
+        // canonicalize ep exactly like make(): keep it only if an enemy pawn can
+        // actually capture, so FEN-loaded keys match keys reached via make()
+        // (otherwise a non-canonical FEN ep corrupts TT/repetition key matching)
+        if pos.ep != NO_SQUARE
+            && pawn_attacks(pos.stm.flip(), pos.ep) & pos.pieces(pos.stm, PieceType::Pawn) == 0
+        {
+            pos.ep = NO_SQUARE;
+        }
 
         pos.halfmove = parts.get(4).and_then(|s| s.parse().ok()).unwrap_or(0);
         pos.fullmove = parts.get(5).and_then(|s| s.parse().ok()).unwrap_or(1);

@@ -1,5 +1,6 @@
-//! NNUE evaluation. Perspective network `(768 -> 512)x2 -> 1`, SCReLU, int16
-//! quantized, trained with bullet (see `training/razor_net.rs`).
+//! NNUE evaluation. Perspective network `(768 -> HIDDEN)x2 -> 1`, SCReLU, int16
+//! quantized, trained with bullet (see `training/razor_net.rs`). HIDDEN is the
+//! const below (512/768/1024 across net generations).
 //!
 //! Two accumulators are maintained, one per board perspective (not per side to
 //! move): `w` indexes pieces as if White is to move, `b` as if Black is. They
@@ -131,16 +132,19 @@ impl Accumulator {
     pub fn eval(&self, stm: Color) -> Score {
         let net = net();
         let (us, them) = if stm == Color::White { (&self.w, &self.b) } else { (&self.b, &self.w) };
-        let mut output = 0i32;
+        // i64 accumulation: at HIDDEN=1024 the i32 sum (2*HIDDEN terms of up to
+        // QA*QA*|weight|) can overflow. i64 is bit-identical when it doesn't and
+        // correct when it would. (Review-confirmed hardening for the 1024 net.)
+        let mut output = 0i64;
         for i in 0..HIDDEN {
-            output += screlu(us[i]) * net.output_weights[i] as i32;
-            output += screlu(them[i]) * net.output_weights[HIDDEN + i] as i32;
+            output += screlu(us[i]) as i64 * net.output_weights[i] as i64;
+            output += screlu(them[i]) as i64 * net.output_weights[HIDDEN + i] as i64;
         }
-        output /= QA;
-        output += net.output_bias as i32;
-        output *= SCALE;
-        output /= QA * QB;
-        output
+        output /= QA as i64;
+        output += net.output_bias as i64;
+        output *= SCALE as i64;
+        output /= (QA * QB) as i64;
+        output as Score
     }
 }
 

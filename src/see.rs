@@ -34,8 +34,13 @@ pub fn see(pos: &Position, mv: Move) -> Score {
         }
     };
 
-    // piece currently standing on the target square (the previous capturer)
-    let mut on_square = pos.piece_on(from).expect("see: empty from").1;
+    // piece currently standing on the target square (the previous capturer);
+    // for a promotion the piece that lands is the promoted type, not the pawn
+    let mut on_square = if mv.is_promo() {
+        mv.promo_piece()
+    } else {
+        pos.piece_on(from).expect("see: empty from").1
+    };
     occ ^= bb(from);
     stm = stm.flip();
 
