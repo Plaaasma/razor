@@ -2,6 +2,36 @@
 
 > Journal per project brief (`H:\RazorBot\aggressive_engine_prompt.md`). Re-read brief at session start. Update this file every session.
 
+---
+## ★ SESSION HANDOVER (2026-06-14) — READ THIS FIRST ★
+
+**Where we are:** Razor **v0.7.0** is the current strength line (tag `v0.7.0`). NNUE engine, `(768→768)x2→1`, net trained on 1 month of Stockfish public data (`nets\razorsf.nnue`). vs Stockfish 18 at STC: **4.0% (−552 Elo)** — gap halved from v0.5.0's 0.38%/−970, but **M1 (≥10% vs SF) not yet met (~150 Elo short)**.
+
+**HEAD = v0.7.0 net (768/razorsf.nnue) + review correctness fixes. bench = 22141.** Verify with `target\release\razor.exe bench` → must print `Nodes searched : 22141`. If not, HEAD is wrong — `src\nnue.rs` must have `HIDDEN: usize = 768` and `include_bytes!("../nets/razorsf.nnue")`.
+
+**Nothing is running.** No datagen/training/match/download live. gen4 self-play parked at 112M (kept for Phase-4 style data, not strength). 4 months of SF data on disk: `data\sf\test80-2024-{01-jan,02-feb,03-mar,04-apr}.binpack` (~40GB).
+
+**IMMEDIATE NEXT EXPERIMENT (highest value):** train a **768-wide net on all 4 SF months** (same speed as v0.7.0, 4× the data). The 1024-wide attempt (netsf2) just FAILED (−54.6 Elo) — pure speed tax (timed out 75× vs 46× at STC); going wider was wrong. 768-on-4-months isolates the data gain without the speed penalty. Steps:
+  1. Make `tools\bullet\examples\razor_net_sf3.rs` = copy `razor_net_sf2.rs` but `HIDDEN_SIZE=768`, `net_id="razorsf3"`, `output_directory="checkpoints_razorsf3"` (keep the 4-month `new_concat_multiple` loader). Register `[[example]] razor_net_sf3` in `tools\bullet\crates\bullet_lib\Cargo.toml`. Train: `cmd /c "cargo run --release --example razor_net_sf3 --features cuda > H:\RazorBot\logs\razorsf3-train.log 2>&1"` from `tools\bullet` (~50min).
+  2. When `Saved [razorsf3-80]` (or -100): copy `checkpoints_razorsf3\razorsf3-*\quantised.bin` → `razor\nets\razorsf3.nnue` (expect ~1.18MB, 768). `src\nnue.rs` HIDDEN=768 (already) + `include_bytes ../nets/razorsf3.nnue`; build; VERIFY eval sanity (startpos ~0, up-Q FEN `rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1` large +), perftsuite EXACT, release-dbg Kiwipete (`r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1`) depth-10 (no 'diverged'). Copy exe → `matches\candidates\razor-netsf3.exe`. Revert `src\nnue.rs` include_bytes to `razorsf.nnue` + rebuild (HEAD stays v0.7.0).
+  3. SPRT `razor-netsf3` vs `masters\razor-v0.7.0.exe`, STC 8+0.08 [0,10], detached → `matches\sprt-netsf3-results.txt`. (Pattern: copy any `matches\sprt_*.ps1`.)
+  4. If pass → v0.8.0 (nnue.rs include_bytes razorsf3, tag, master copy), LTC confirm vs v0.7.0, M1 recheck vs SF18.
+  5. If flat: SF data quantity is tapped at 768. Then either (a) go back to the SEARCH ladder (continuation history, SEE in move ordering, singular extensions, corrhist — Elo with no eval-speed cost), or (b) try output-buckets / a deeper-but-fast net arch.
+
+**HARD-WON RULES (don't relearn these):**
+- **SPRT discipline:** every change SPRT'd vs current master [0,10] early / [0,5] mid. Freeze candidate binary to `matches\candidates\` BEFORE testing (never test `target\release` — a rebuild contaminates it). One queue instance at a time. Kill orphan `razor-*` engines after a match or the next test hangs on the pipe.
+- **NNUE net swap = 3 edits:** `nnue.rs` HIDDEN const + `include_bytes` path; the embedded net file must exist (`nets\*.nnue`, force-add — `*.nnue` is gitignored but `!nets/*.nnue` un-ignores). After building a candidate, ALWAYS revert nnue.rs to the current master net so HEAD stays the validated line.
+- **Verify every net build:** eval sanity (startpos near 0; up-queen large positive; down-queen large negative) + `perftsuite` exact + a `release-dbg` search to trip the incremental-accumulator `debug_assert` (proves the accumulator layout is right at this HIDDEN width). The i64 output accumulation (committed) prevents overflow at ≥1024.
+- **NNUE speed tax is real:** bigger/slower nets lose at STC even with better eval (from-scratch acc: −32; 1024: −54). M1 is measured at STC 1t, so STC strength is what counts. Keep nets fast (768 is the sweet spot so far). The eval-vs-speed split shows as flat/neg STC but strong LTC.
+- **Net-gen findings:** PSQT→NNUE teacher = +51; NNUE self-play loop +209 then plateaus (~2600, can't beat own teacher); **SF public data (~3500 teacher) = +477, the big lever.** More SF *quantity* (1→4 months) expected modest; SF *quality* was the jump. Self-play gen-loop is demoted to Phase-4 style data.
+- **Env quirks:** no WSL/tmux (long jobs = detached `Start-Process powershell -File ...`); PS5.1 pipe→exe adds UTF-16 BOM (use argv or BOM-stripped input; uci.rs strips it); fastchess `-each` needs `option.Threads=N` not `threads=N`; my tally.py keys on engine name "new" so it misfires when names differ (read fastchess's own Elo line instead). DGX Spark `ssh liam@169.254.142.130` (aarch64, for overflow datagen — used once for batch-2; no CUDA toolkit there).
+- **SF data:** `bullet-utils convert --from text` wants WHITE-relative score+result (datagen now emits white-rel). SF binpacks load via `SfBinpackLoader::new_concat_multiple(&[paths], 1024, 6, filter)` — filter = ply≥16, !in_check, |score|≤10000, quiet best move. Source: HF `linrock/test80-2024/resolve/main/test80-2024-MM-mon-2tb7p.min-v2.v6.binpack.zst` (curl -L, zstd -d).
+- **Ledger:** every test → row in `RESULTS.md` (28 rows). Versions v0.2.0–v0.7.0 tagged. `matches\masters\razor-v*.exe` archived.
+- **Adversarial reviews over-confirm:** the engine-review workflow flagged 7 "bugs"; 4 were false positives (standard PVS/NMP patterns). ALWAYS read the actual code before applying a review fix.
+
+**Tool-call note for the assistant:** emit each `<invoke>` with NO leading word. (Prior session leaked a stray token before tool tags — that's the "context rot" prompting this handover. Just be clean.)
+
+---
 ## Current Status
 
 - **Date:** 2026-06-13 (session 2 cont.)
