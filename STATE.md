@@ -19,6 +19,7 @@
 - Download 2-3 more test80-2024 months (feb/mar/apr v6) from HF `linrock/test80-2024/resolve/main/`. Combine for a multi-month training set.
 - **Multi-binpack training:** SfBinpackLoader takes ONE path — to use several, either (a) concatenate the decompressed binpacks (SF binpack = concatenated games; test if `cmd /c copy /b a+b out` produces a valid binpack — verify by training a few batches), or (b) check bullet for a multi-file SF loader / train sequentially across files. Resolve at train time.
 - **Bigger net: 1024-wide** (nnue.rs HIDDEN=1024 + training HIDDEN_SIZE=1024) — now justified by abundant high-quality data (the net3 starvation lesson: only go wide with enough data; SF multi-month gives it). quantised.bin for 1024 ≈ 768*1024... wait input is 768: 768*1024*2 + 1024*2 + 2048*2 + pad ≈ 1.57MB.
+- **IN PROGRESS (2026-06-14):** 4 months downloaded (jan/feb/mar/apr, ~40GB). `SfBinpackLoader::new_concat_multiple` reads all 4 directly (no concat needed — saves disk). **razorsf2 = 1024-wide net TRAINING** on the 4-month set, 100 superbatches, 3.58M pos/s, ~50min. Example `training\razor_net_sf2.rs`, log `logs\razorsf2-train.log`. Then build (HIDDEN=1024, verify eval/perft/incremental-acc) → SPRT vs v0.7.0 → if pass v0.8.0 → LTC → M1 recheck (toward ≥10%).
 - Train → SPRT vs v0.7.0 → if pass, v0.8.0 → LTC → M1 recheck again. Iterate SF months + net size toward M1.
 - Also worth: re-run the §7 UHO benchmark (60+0.6) on v0.7.0 sometime — it's far stronger now; the style metrics will mean more. Deferred until closer to M-ladder targets.
 
