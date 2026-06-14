@@ -18,12 +18,12 @@ use crate::eval::Score;
 use crate::position::Position;
 use crate::types::{Color, PieceType, Square};
 
-const HIDDEN: usize = 512;
+const HIDDEN: usize = 768;
 const QA: i32 = 255;
 const QB: i32 = 64;
 const SCALE: i32 = 400;
 
-const NET_BYTES: &[u8] = include_bytes!("../nets/razor2.nnue");
+const NET_BYTES: &[u8] = include_bytes!("../nets/razorsf.nnue");
 
 pub struct Network {
     feature_weights: Box<[[i16; HIDDEN]; 768]>,

@@ -32,7 +32,7 @@
         "additional_lines_rgx": [],
         "event_name": "Fastchess Tournament",
         "site": "?",
-        "file": "H:\\RazorBot\\matches\\sprt-net3-20260613-113636.pgn",
+        "file": "H:\\RazorBot\\matches\\sprt-netsf-20260614-020250.pgn",
         "notation": 0,
         "append_file": true,
         "track_nodes": false,
@@ -60,7 +60,7 @@
     },
     "config_name": "config.json",
     "output": 0,
-    "seed": 10490029640014810854,
+    "seed": 90524961818220757,
     "variant": 0,
     "type": 0,
     "gauntlet_seeds": 1,
@@ -88,9 +88,9 @@
     },
     "engines": [
         {
-            "name": "net3",
+            "name": "netsf",
             "dir": "",
-            "cmd": "H:\\RazorBot\\matches\\candidates\\razor-net3.exe",
+            "cmd": "H:\\RazorBot\\matches\\candidates\\razor-netsf.exe",
             "args": "",
             "restart": false,
             "options": [
@@ -147,16 +147,16 @@
         }
     ],
     "stats": {
-        "net3 vs v060": {
-            "wins": 761,
-            "losses": 788,
-            "draws": 569,
-            "penta_WW": 126,
-            "penta_WD": 211,
-            "penta_WL": 298,
-            "penta_DD": 83,
-            "penta_LD": 192,
-            "penta_LL": 149
+        "netsf vs v060": {
+            "wins": 143,
+            "losses": 4,
+            "draws": 11,
+            "penta_WW": 64,
+            "penta_WD": 11,
+            "penta_WL": 4,
+            "penta_DD": 0,
+            "penta_LD": 0,
+            "penta_LL": 0
         }
     }
 }
