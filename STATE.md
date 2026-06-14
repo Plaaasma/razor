@@ -10,6 +10,18 @@
 - **Strength chain:** v0.2.0 → +1290 (search) → v0.3.0 → +123 LTC → v0.4.0 → +51 NNUE → v0.5.0 → **+209 net2 (gen2 NNUE-labeled)** → v0.6.0. The net-generation loop is the biggest lever now.
 - **v0.6.0 (tag, commit 34fcb7a):** net2, same `(768→512)x2→1` arch as net1 but trained on NNUE-labeled data. bench 26,242. `masters\razor-v0.6.0.exe`. LTC confirm vs v0.5.0 running.
 
+## M1 RECHECK (2026-06-14): gap HALVED, M1 not yet met
+
+**Razor v0.7.0 = 4.0% vs SF18** (3W-26D-371L, 400 games, −552 Elo). vs v0.5.0's 0.38%/−970. Closed ~418 Elo of the real gap; first 3 wins vs full-strength Stockfish. **M1 (≥10%, ~−400 Elo) still ~150 Elo away.** Honest: huge progress, milestone not reached. The SF-data lever clearly works — more of it should close the rest.
+
+## v0.8.0 PLAN — more SF data + bigger net (toward M1)
+
+- Download 2-3 more test80-2024 months (feb/mar/apr v6) from HF `linrock/test80-2024/resolve/main/`. Combine for a multi-month training set.
+- **Multi-binpack training:** SfBinpackLoader takes ONE path — to use several, either (a) concatenate the decompressed binpacks (SF binpack = concatenated games; test if `cmd /c copy /b a+b out` produces a valid binpack — verify by training a few batches), or (b) check bullet for a multi-file SF loader / train sequentially across files. Resolve at train time.
+- **Bigger net: 1024-wide** (nnue.rs HIDDEN=1024 + training HIDDEN_SIZE=1024) — now justified by abundant high-quality data (the net3 starvation lesson: only go wide with enough data; SF multi-month gives it). quantised.bin for 1024 ≈ 768*1024... wait input is 768: 768*1024*2 + 1024*2 + 2048*2 + pad ≈ 1.57MB.
+- Train → SPRT vs v0.7.0 → if pass, v0.8.0 → LTC → M1 recheck again. Iterate SF months + net size toward M1.
+- Also worth: re-run the §7 UHO benchmark (60+0.6) on v0.7.0 sometime — it's far stronger now; the style metrics will mean more. Deferred until closer to M-ladder targets.
+
 ## BREAKTHROUGH: SF-data net = v0.7.0 (+477.6 Elo, 2026-06-14)
 
 **netsf SPRT vs v0.6.0: +477.6±98 Elo, 94% (143-4-11).** Biggest gain in the project. SF/Leela labels (~3500 teacher) on ONE month of test80-2024 data crushed the self-play net. The self-play loop was capped at ~2600 (can't beat its own teacher); SF data smashed through it. **Tagged v0.7.0** (commit 8371630), bench 22141, 768-wide, net `nets\razorsf.nnue`. LTC confirm vs v0.6.0 running; M1 recheck vs SF18 next.
