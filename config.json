@@ -32,7 +32,7 @@
         "additional_lines_rgx": [],
         "event_name": "Fastchess Tournament",
         "site": "?",
-        "file": "H:\\RazorBot\\matches\\m1-v070-20260614-041613.pgn",
+        "file": "H:\\RazorBot\\matches\\sprt-netsf2-20260614-141636.pgn",
         "notation": 0,
         "append_file": true,
         "track_nodes": false,
@@ -51,25 +51,25 @@
         "append_file": true
     },
     "sprt": {
-        "alpha": 0.0,
-        "beta": 0.0,
+        "alpha": 0.05,
+        "beta": 0.05,
         "elo0": 0.0,
-        "elo1": 0.0,
+        "elo1": 10.0,
         "model": "normalized",
-        "enabled": false
+        "enabled": true
     },
     "config_name": "config.json",
     "output": 0,
-    "seed": 7814532647988749602,
+    "seed": 7436786635325061448,
     "variant": 0,
     "type": 0,
     "gauntlet_seeds": 1,
-    "ratinginterval": 20,
+    "ratinginterval": 50,
     "scoreinterval": 1,
     "wait": 0,
     "autosaveinterval": 20,
     "games": 2,
-    "rounds": 200,
+    "rounds": 100000,
     "concurrency": 16,
     "force_concurrency": false,
     "recover": true,
@@ -88,9 +88,9 @@
     },
     "engines": [
         {
-            "name": "razor070",
+            "name": "netsf2",
             "dir": "",
-            "cmd": "H:\\RazorBot\\matches\\masters\\razor-v0.7.0.exe",
+            "cmd": "H:\\RazorBot\\matches\\candidates\\razor-netsf2.exe",
             "args": "",
             "restart": false,
             "options": [
@@ -117,9 +117,9 @@
             "variant": 0
         },
         {
-            "name": "sf18",
+            "name": "v070",
             "dir": "",
-            "cmd": "H:\\RazorBot\\tools\\stockfish\\stockfish\\stockfish-windows-x86-64-bmi2.exe",
+            "cmd": "H:\\RazorBot\\matches\\masters\\razor-v0.7.0.exe",
             "args": "",
             "restart": false,
             "options": [
@@ -147,16 +147,16 @@
         }
     ],
     "stats": {
-        "razor070 vs sf18": {
-            "wins": 3,
-            "losses": 371,
-            "draws": 26,
+        "netsf2 vs v070": {
+            "wins": 2,
+            "losses": 6,
+            "draws": 10,
             "penta_WW": 0,
-            "penta_WD": 0,
-            "penta_WL": 3,
-            "penta_DD": 0,
-            "penta_LD": 26,
-            "penta_LL": 171
+            "penta_WD": 1,
+            "penta_WL": 1,
+            "penta_DD": 3,
+            "penta_LD": 3,
+            "penta_LL": 1
         }
     }
 }
