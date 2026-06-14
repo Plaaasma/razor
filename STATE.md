@@ -10,7 +10,14 @@
 - **Strength chain:** v0.2.0 → +1290 (search) → v0.3.0 → +123 LTC → v0.4.0 → +51 NNUE → v0.5.0 → **+209 net2 (gen2 NNUE-labeled)** → v0.6.0. The net-generation loop is the biggest lever now.
 - **v0.6.0 (tag, commit 34fcb7a):** net2, same `(768→512)x2→1` arch as net1 but trained on NNUE-labeled data. bench 26,242. `masters\razor-v0.6.0.exe`. LTC confirm vs v0.5.0 running.
 
-## NEW LEVER: Stockfish public training data (break the self-play ceiling)
+## BREAKTHROUGH: SF-data net = v0.7.0 (+477.6 Elo, 2026-06-14)
+
+**netsf SPRT vs v0.6.0: +477.6±98 Elo, 94% (143-4-11).** Biggest gain in the project. SF/Leela labels (~3500 teacher) on ONE month of test80-2024 data crushed the self-play net. The self-play loop was capped at ~2600 (can't beat its own teacher); SF data smashed through it. **Tagged v0.7.0** (commit 8371630), bench 22141, 768-wide, net `nets\razorsf.nnue`. LTC confirm vs v0.6.0 running; M1 recheck vs SF18 next.
+- **Strength chain:** ... v0.6.0 → **+477 SF-data → v0.7.0**. Estimated jump from ~2600 to ~3000+ (M1 recheck will measure the real SF gap, was −970 at v0.5.0).
+- **This reframes the roadmap:** SF public data is THE lever, not self-play iteration. Next: (a) more test80 months (combined multi-month set → bigger/better), (b) SF+selfplay mix (brief §5.4), (c) bigger net now that data is abundant+high-quality (768→1024, king-buckets), (d) re-examine M-ladder — v0.7.0 may approach M1 (≥10% vs SF).
+- self-play gen4 (112M) and the gen-loop are now LOWER priority — kept for the Phase 4 style/aggression data (sharp UHO positions), not raw strength.
+
+## (history) NEW LEVER: Stockfish public training data
 
 Self-play distillation plateaus at the teacher's strength (~2600). To pass it we need a stronger teacher — SF's public NNUE data is labeled by deep SF/Leela (~3500). Brief sanctions this (§2 teacher, §5.2 distill, §5.4 keep SF-labeled data as mix). Original-code rule = engine, not labels.
 - **Source:** robotmoon.com/nnue-training-data → HuggingFace `linrock/test80-2024` (282GB total). Grabbing ONE monthly binpack: `test80-2024-01-jan-2tb7p.min-v2.v6.binpack.zst` (7.7GB compressed, ~300-400M positions, SF/Leela-labeled, syzygy-rescored). HF resolve URL → xethub CDN, curl -L.
