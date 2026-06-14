@@ -32,7 +32,7 @@
         "additional_lines_rgx": [],
         "event_name": "Fastchess Tournament",
         "site": "?",
-        "file": "H:\\RazorBot\\matches\\sprt-netsf-20260614-020250.pgn",
+        "file": "H:\\RazorBot\\matches\\ltc-v070-confirm.pgn",
         "notation": 0,
         "append_file": true,
         "track_nodes": false,
@@ -51,25 +51,25 @@
         "append_file": true
     },
     "sprt": {
-        "alpha": 0.05,
-        "beta": 0.05,
+        "alpha": 0.0,
+        "beta": 0.0,
         "elo0": 0.0,
-        "elo1": 10.0,
+        "elo1": 0.0,
         "model": "normalized",
-        "enabled": true
+        "enabled": false
     },
     "config_name": "config.json",
     "output": 0,
-    "seed": 90524961818220757,
+    "seed": 18285968559381353634,
     "variant": 0,
     "type": 0,
     "gauntlet_seeds": 1,
-    "ratinginterval": 50,
+    "ratinginterval": 25,
     "scoreinterval": 1,
     "wait": 0,
     "autosaveinterval": 20,
     "games": 2,
-    "rounds": 100000,
+    "rounds": 100,
     "concurrency": 16,
     "force_concurrency": false,
     "recover": true,
@@ -88,15 +88,15 @@
     },
     "engines": [
         {
-            "name": "netsf",
+            "name": "v070",
             "dir": "",
-            "cmd": "H:\\RazorBot\\matches\\candidates\\razor-netsf.exe",
+            "cmd": "H:\\RazorBot\\matches\\masters\\razor-v0.7.0.exe",
             "args": "",
             "restart": false,
             "options": [
                 [
                     "Hash",
-                    "16"
+                    "64"
                 ],
                 [
                     "Threads",
@@ -105,9 +105,9 @@
             ],
             "limit": {
                 "tc": {
-                    "increment": 80,
+                    "increment": 400,
                     "fixed_time": 0,
-                    "time": 8000,
+                    "time": 40000,
                     "moves": 0,
                     "timemargin": 0
                 },
@@ -125,7 +125,7 @@
             "options": [
                 [
                     "Hash",
-                    "16"
+                    "64"
                 ],
                 [
                     "Threads",
@@ -134,9 +134,9 @@
             ],
             "limit": {
                 "tc": {
-                    "increment": 80,
+                    "increment": 400,
                     "fixed_time": 0,
-                    "time": 8000,
+                    "time": 40000,
                     "moves": 0,
                     "timemargin": 0
                 },
@@ -147,14 +147,14 @@
         }
     ],
     "stats": {
-        "netsf vs v060": {
-            "wins": 143,
-            "losses": 4,
-            "draws": 11,
-            "penta_WW": 64,
-            "penta_WD": 11,
-            "penta_WL": 4,
-            "penta_DD": 0,
+        "v070 vs v060": {
+            "wins": 169,
+            "losses": 6,
+            "draws": 25,
+            "penta_WW": 70,
+            "penta_WD": 23,
+            "penta_WL": 6,
+            "penta_DD": 1,
             "penta_LD": 0,
             "penta_LL": 0
         }

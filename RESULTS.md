@@ -35,5 +35,6 @@ Standard LTC confirm: 40+0.4s.
 | 24 | 2026-06-13 | LTC confirm: v0.6.0 net2 vs v0.5.0 net1 | fixed 200 games | n/a | 40+0.4 | (79.6%) | n/a | **CONFIRMED +236** | 144/181. Even bigger at LTC than STC's +209 (NNUE shines at depth). v0.6.0 solidly validated |
 | 25 | 2026-06-13 | net3: 768 width on gen3 (100M) | v0.6.0 512 → net3 768 | [0, 10] | 8+0.08 | (49.4%) | killed | **REJECTED ~−4** | 2116 games: +7 early drifting to −4.3 (true value ~0/slightly neg). 768 net is DATA-STARVED on 100M (2.25× params of 512) AND slower → no net gain. REVERTED HEAD to net2/512. Lever = MORE DATA (250M gen4) before going wide. v0.6.0 stays the line |
 | 26 | 2026-06-14 | **netsf: SF-data 768 net** (test80-2024, ~3500 teacher) | v0.6.0 → netsf | [0, 10] | 8+0.08 | 143-11-4 | H1 2.95 | **PASS +477.6±98** | 158 games (94%!). LARGEST GAIN IN PROJECT. SF/Leela labels (~3500 teacher) vs self-play (~2600) — breaks the distillation plateau the self-play loop was capped at. → v0.7.0. One month of SF data; more months / SF+selfplay mix = further gains |
+| 27 | 2026-06-14 | LTC confirm: v0.7.0 SF-net vs v0.6.0 | fixed 200 games | n/a | 40+0.4 | (90.2%) | n/a | **CONFIRMED +386** | 166/184. Slightly below STC +477 but still dominant. v0.7.0 solidly validated |
 
 <!-- Append rows below as tests complete. Never delete rows. -->
