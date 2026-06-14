@@ -14,7 +14,9 @@
 
 Self-play distillation plateaus at the teacher's strength (~2600). To pass it we need a stronger teacher — SF's public NNUE data is labeled by deep SF/Leela (~3500). Brief sanctions this (§2 teacher, §5.2 distill, §5.4 keep SF-labeled data as mix). Original-code rule = engine, not labels.
 - **Source:** robotmoon.com/nnue-training-data → HuggingFace `linrock/test80-2024` (282GB total). Grabbing ONE monthly binpack: `test80-2024-01-jan-2tb7p.min-v2.v6.binpack.zst` (7.7GB compressed, ~300-400M positions, SF/Leela-labeled, syzygy-rescored). HF resolve URL → xethub CDN, curl -L.
-- **DOWNLOADING now** (detached, `matches\download_sf.ps1`, ~37MB/s): → `data\sf\test80-2024-01-jan.binpack` (decompress via zstd). I/O-bound, runs alongside gen4. Log `data\sf\download.log`.
+- **DATA READY:** `data\sf\test80-2024-01-jan.binpack` (8.55 GB decompressed, ~300M+ SF/Leela-labeled positions).
+- **SF-768 net TRAINING** (2026-06-14, resumed after a user resource-pause): razorsf, 80 superbatches, 3.04M pos/s (SfBinpackLoader streams+filters live), ~45 min. Log `logs\razorsf-train.log`. → SPRT vs v0.6.0.
+- **gen4 HELD at 112.4M/250M** (user paused, then resumed into the SF experiment instead). Decision: SF data is higher-value than finishing the 768-self-play-data-starvation test — if SF-768 wins big, gen4's experiment is moot. gen4 shards retained; resume to 250M only if the SF path disappoints.
 - **Loader wired:** `examples\razor_net_sf.rs` (768 arch, `SfBinpackLoader` + standard SF filter: ply≥16, not in check, |score|≤10000, quiet best move). Compiles. 80 superbatches (SF data warrants more passes). HEAD-comparable arch to net4 so SF-768 vs selfplay-768 is clean.
 - **Plan:** train SF-data net → SPRT vs v0.6.0. Expect a LARGE jump (3500 teacher vs our 2600). If big: this becomes the strength engine; self-play loop demotes to fine-tuning/style (Phase 4). The mix (SF + self-play, brief §5.4) is the follow-up experiment.
 - **Caveat:** SF data = objective play → pushes Razor NEUTRAL, not aggressive. Fine — Prime Directive #1 is strength first; aggression (Phase 4) layers on top of a strong net.
