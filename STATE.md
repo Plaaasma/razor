@@ -11,7 +11,20 @@
 
 **RUNNING (2026-06-15): MIRRORED 4-bucket net training** — bg `bav21my7y`, `razor_net_kbm.rs` (768x4 mirrored king-buckets by mirrored-file + factoriser, 4 SF months, 320 sb), log `logs\razorkbm-train.log`, dir `checkpoints_razorkbm\`. The top-EV lever: mirror folds both wings into each bank → ~2× data/bucket → better-trained banks → more eval at the SAME 4.72MB table/~9% tax → should tip the (validated, LTC+8) 4-bucket lever STC-positive. ~1.5-2hr.
 **MIRROR INFERENCE STAGED + COMPILES (backup `matches\candidates\nnue-kbm.rs`):** adds per-perspective flip mask (`king_flip(sq)=(file>3)?7:0`, XORs feature file bits), `king_bucket=MIRROR_MAP[file]` (`[0,1,2,3,3,2,1,0]`), Accumulator{wflip,bflip}, refresh-on-(bucket OR flip)-change. search = `search-kb.rs` (apply(child), reused). HEAD = v0.8.0 (20249).
-**NOTHING RUNNING.** Box clean. HEAD = v0.8.0 (bench 20249, tag v0.8.0).
+**NOTHING RUNNING.** Box clean. HEAD = v0.8.0 (bench 20249, tag v0.8.0) + tunable infra (bench-neutral).
+
+**SPSA (200 iters) FAILED −8.8** (row 42): drifted a near-optimal base the wrong way. **Search base is already well-tuned at STC.** Tunable infra kept (`src\tune.rs` UCI options lmrbase/lmrdiv/rfpmargin/futbase/futscale, advertised in `uci.rs`, driver `matches\spsa.py`) — a future SPSA would need far more games/iter + iters + a/c decay (low EV on a tuned base; don't repeat cheaply).
+
+**★ M1 (~110 Elo) LEVER MAP after this session — cheap/medium STC levers EXHAUSTED ★**
+  - Search ladder: log-LMR +9.5 (banked, v0.8.0); malus/corrhist/history-LMR neutral; SPSA −9 (base tuned).
+  - Net capacity (king-buckets, all schemes): real eval (LTC +8) but ≤ ~9% feature-table cache speed tax at STC → net ≤0.
+  - More SF data at plain-768: tapped (rows 29/30).
+  **Remaining levers are all STRUCTURAL/bigger (next sessions):**
+  1. **int8 feature weights** (TOP) — halve the feature-table cache footprint → removes the king-bucket speed tax → the validated capacity eval (LTC+8) becomes STC-positive AND reopens scaling more/bigger data (the project's biggest historical lever, SF data +477). Retrain with int8 l0w quantise + accumulator handling + careful accuracy verify. Accuracy-risky → fresh careful session.
+  2. **Stronger teacher data** — higher-node SF relabel or newer/more test80 months (pairs with int8 to actually use the added capacity).
+  3. (low EV) heavier SPSA; singular extensions (untested, complex, +20-50 maybe).
+
+**SESSION TOTAL (v0.7.0 → v0.8.0):** i64 −37 regression fixed; log-LMR +9.5 → v0.8.0; SF 4.0%/−552 → 5.0%/−511. Plus a large body of characterized negative knowledge (data tapped at 768, search micro-features + SPSA neutral/negative on a tuned base, king-buckets speed-tax-bound) and reusable infra (king-bucket train+inference pipeline, SPSA harness, UCI tunables). All committed/tagged/archived.
 
 **★ KING-BUCKET LEVER EXHAUSTED — speed-tax-bound (2026-06-15) ★** All 3 schemes STC ≤0: non-mirror 4-bucket **−0.4 (LTC +8)** (rows 39+note), 2-bucket −14 (row 40), mirrored 4-bucket −11 (row 41). The input capacity gives REAL eval (the LTC +8 is genuine, validated inference) but it's ≤ the **~9% feature-table cache speed tax** (4.72MB l0w vs plain 768's 1.18MB) at STC, regardless of bucket count/scheme/mirror. More/better buckets do NOT clear it. Pipelines + nets all archived (`razor_net_kb*.rs`, `nnue-kb.rs`/`nnue-kbm.rs`, `razor-netkb*.exe`, `nets\razorkb*.nnue`).
 

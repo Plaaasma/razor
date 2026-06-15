@@ -42,6 +42,12 @@ impl Uci {
                     crate::send!("option name Threads type spin default 1 min 1 max 32");
                     crate::send!("option name MoveOverhead type spin default 0 min 0 max 1000");
                     crate::send!("option name UseNNUE type check default true");
+                    // SPSA-tunable search params (see tune.rs)
+                    crate::send!("option name lmrbase type spin default 75 min 0 max 300");
+                    crate::send!("option name lmrdiv type spin default 225 min 100 max 500");
+                    crate::send!("option name rfpmargin type spin default 80 min 20 max 200");
+                    crate::send!("option name futbase type spin default 80 min 0 max 300");
+                    crate::send!("option name futscale type spin default 120 min 20 max 300");
                     crate::send!("uciok");
                 }
                 "isready" => crate::send!("readyok"),
