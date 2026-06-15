@@ -5,11 +5,24 @@
 ---
 ## ★ SESSION HANDOVER (2026-06-14) — READ THIS FIRST ★
 
-**Where we are:** Razor **v0.8.0** (tag `v0.8.0`) = v0.7.0 net (768, `razorsf.nnue`) + i32 acc (restored, was a −37 i64 regression in HEAD) + log-LMR (+9.5 STC / +6.95 LTC). bench **20249**. vs SF18 v0.7.0 was 4.0%/−552; v0.8.0 adds ~+7-9 Elo → M1 recheck pending (still expect ~−540, M1 −400 a way off). archive `masters\razor-v0.8.0.exe`.
+**Where we are:** Razor **v0.8.0** (tag `v0.8.0`, commit ce2102a) = v0.7.0 net (768, `razorsf.nnue`) + i32 acc (restored, was a −37 i64 regression) + log-LMR (+9.5 STC / +6.95 LTC). bench **20249**, archive `masters\razor-v0.8.0.exe`. **vs SF18: 5.0% (−511.5)** — up from v0.7.0's 4.0%/−552 (+41 Elo). **M1 (≥10% vs SF) ~110 Elo away** (was ~150).
 
 **HEAD = v0.7.0 line + i32 acc revert + log-LMR. bench = 20249** (was 22141 at v0.7.0 tag; i32 revert kept it 22141, then LMR changed the tree → 20249). Verify `target\release\razor.exe bench` → `Nodes searched : 20249`. `src\nnue.rs` must have `HIDDEN=768` + `include_bytes!("../nets/razorsf.nnue")` + **i32** accumulation (NOT i64). search.rs has the log-LMR `lmr_table()`. Tagged **v0.8.0** (LTC-confirmed +6.95). Archived `masters\razor-v0.8.0.exe`.
 
-**RUNNING (2026-06-15): LMR LTC-confirm** — bg `bo8vi5imh`, `matches\ltc_lmr.ps1` (40+0.4, 300 games), live `ltc-lmr-live.log`, summary `ltc-lmr-summary.txt`. `masters\razor-lmrbase.exe` (i32+LMR) vs `masters\razor-v0.7.0.exe`. Confirms the LMR gain holds at LTC before tagging v0.8.0. After: tag v0.8.0 (bench 20249, archive masters\razor-v0.8.0.exe) → M1 recheck vs SF18.
+**NOTHING RUNNING.** Session 3 complete: v0.8.0 tagged, M1 = 5.0%/−511. Box clean, no orphan engines.
+
+**IMMEDIATE NEXT EXPERIMENT (next session) — two big levers for the ~110 Elo to M1:**
+  1. **SPSA tuning (medium effort, ~+20-50 cumulative, brief §5).** The search base is fresh and untuned. Tune via SPSA on selfplay Elo: LMR divisor (2.25) + base (0.75), RFP margin (80/depth), NMP reduction (3), futility margins (80+120*d), aspiration delta (25), and **revive the deferred neutrals as tunable** — corrhist constants (`search-corrhist2.rs`: CORR_GRAIN/MAX/weight) and history-LMR divisor (`search-lmrhist.rs`: 150k). fastchess has an SPSA mode; or wire a simple SPSA harness. Expose params as UCI options first. This is the highest EV-per-risk next step.
+  2. **Output-bucket net arch (high effort, potentially +50-150 — reopens the data lever).** SF-data quantity is tapped at 768 width (rows 29/30) and 1024 lost on speed (netsf2 −54.6). Output buckets (bucket the `→1` layer by piece count, ~8 buckets) let a bigger/better net evaluate at ~768 speed → can absorb the 4-month data without the speed tax. bullet supports output buckets (`examples\progression\2_output_buckets.rs`). Needs: net arch change + nnue.rs inference (select bucket by popcount) + retrain. The proven big driver was SF-data quality (+477); this re-enables scaling it.
+
+**Search-ladder status: at diminishing returns on the current base.** This session: log-LMR +9.5 KEPT (only win). Neutral/deferred (sources in `matches\candidates\search-*.rs`, revive via SPSA): history malus (row 33), corrhist (35/36), history-LMR (37). Untried cheap features if wanted: improving heuristic, SEE-in-move-ordering, singular extensions (risky), countermove ordering. Likely also neutral without tuning — SPSA the base first.
+
+**KEY SESSION-3 LESSONS (don't relearn):**
+  - **bench-neutral ≠ Elo-neutral.** The i64 acc (1024 hardening) changed no node count but cost −37 Elo at STC (slower). SPRT ANY speed-affecting change. Control: build-vs-build at identical source isolates build/speed regressions.
+  - **Copy-Item preserves source mtime → cargo skips rebuild.** Always `(Get-Item file).LastWriteTime=[DateTime]::Now` after copying a source file before `cargo build`. (Edit-tool changes get fresh mtime, so they're safe.)
+  - **SF-data lever tapped at 768** — more data at fixed width HURTS (capacity-bound). Need more capacity (output buckets) to use it.
+  - **i32 acc is the line at 768** (compile-time assert guards >768; restore i64 if a ≥1024 net is revived).
+  - Feature SPRTs must use `masters\razor-v0.8.0.exe` (= current line) as the base, NOT older masters.
 
 **Search-ladder summary (this session, fair i32 base, all SPRT'd):** log-LMR **+9.5 KEPT** (row 34, new base). NEUTRAL/deferred: history malus (−7→row33), corrhist a1 −14.6 / a2 +1.5 (rows 35/36), history-LMR +1.2 (row 37). Neutrals' sources kept for SPSA (`search-{corrhist2,lmrhist,malus}.rs`). **Ladder at diminishing returns at this base** — next bigger levers: SPSA-tune (LMR divisor 2.25, corrhist constants, history-LMR divisor) on the style/win objective, OR bigger-but-fast net arch (output buckets / king-buckets) to reopen the data lever.
 

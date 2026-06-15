@@ -61,4 +61,6 @@ Standard LTC confirm: 40+0.4s.
 
 | 38 | 2026-06-15 | LTC confirm: LMR base vs v0.7.0 | fixed 300 games | n/a | 40+0.4 | 43-220-37 | n/a | **CONFIRMED +6.95±19** | 300 games (51.0%). log-LMR holds at LTC, consistent with STC +9.5. i32 acc identical in both → isolates the log-LMR gain. → tag **v0.8.0** (i32 accumulation + log-LMR line, bench 20249) |
 
+| M1 | 2026-06-15 | **M1 RECHECK v0.8.0 vs SF18** | v0.8.0 vs SF18 | n/a | 8+0.08 1t | 0-40-360 | n/a | **NOT MET (5.0%)** gap −511.5 | 400 games. vs v0.7.0's 4.0%/−552 → **+41 Elo closer** (i32 fix +37 + LMR +9; confirms the −552 baseline was the i64 HEAD, so the i64 fix was a real gain not just a restore). M1 needs ≥10% (~−400) → ~110 Elo short (was ~150). 0 wins (v0.7.0 had 3) — traded for draws (40 vs 26), higher score via solidity. Gap closing; milestone still out. Next big levers: SPSA tuning + output-bucket net arch (reopen the data lever) |
+
 <!-- Append rows below as tests complete. Never delete rows. -->
