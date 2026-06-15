@@ -57,6 +57,10 @@ pub struct Searcher<'a> {
     killers: [[Move; 2]; MAX_PLY],
     /// butterfly history: [stm][from][to] cutoff counter for quiet ordering
     history: Box<[[[i32; 64]; 64]; 2]>,
+    /// move excluded from search at each ply (for singular-extension verification
+    /// searches); MOVE_NONE normally. Per-ply to avoid threading a param through
+    /// every negamax call site.
+    excluded: [Move; MAX_PLY],
 }
 
 impl<'a> Searcher<'a> {
@@ -78,6 +82,7 @@ impl<'a> Searcher<'a> {
             use_nnue: true,
             killers: [[MOVE_NONE; 2]; MAX_PLY],
             history: Box::new([[[0; 64]; 64]; 2]),
+            excluded: [MOVE_NONE; MAX_PLY],
         }
     }
 
@@ -232,16 +237,26 @@ impl<'a> Searcher<'a> {
             return DRAW;
         }
 
-        // TT probe: cutoff at non-root nodes, move ordering everywhere
+        // consume this ply's excluded move (set by a singular verification search)
+        let excluded = self.excluded[ply];
+        self.excluded[ply] = MOVE_NONE;
+
+        // TT probe: cutoff at non-root nodes (skipped during an exclusion search),
+        // move ordering + singular test everywhere
         let mut tt_mv = MOVE_NONE;
+        let mut tt_score = 0;
+        let mut tt_depth = 0u32;
+        let mut tt_bound = 0u8;
         if let Some(e) = self.tt.probe(pos.key) {
             tt_mv = Move(e.mv);
-            if ply > 0 && e.depth as u32 >= depth {
-                let score = score_from_tt(e.score as Score, ply);
+            tt_score = score_from_tt(e.score as Score, ply);
+            tt_depth = e.depth as u32;
+            tt_bound = e.bound;
+            if ply > 0 && excluded == MOVE_NONE && tt_depth >= depth {
                 match e.bound {
-                    BOUND_EXACT => return score,
-                    BOUND_LOWER if score >= beta => return score,
-                    BOUND_UPPER if score <= alpha => return score,
+                    BOUND_EXACT => return tt_score,
+                    BOUND_LOWER if tt_score >= beta => return tt_score,
+                    BOUND_UPPER if tt_score <= alpha => return tt_score,
                     _ => {}
                 }
             }
@@ -306,6 +321,9 @@ impl<'a> Searcher<'a> {
         let new_depth = depth - 1 + u32::from(in_check);
         self.keys.push(pos.key);
         for mv in list.iter() {
+            if mv == excluded {
+                continue;
+            }
             move_count += 1;
             // futility: at low depth, quiets can't lift a hopeless static
             // eval back to alpha — skip them (never the first move, so mate
@@ -323,6 +341,26 @@ impl<'a> Searcher<'a> {
             {
                 continue;
             }
+            // singular extension: if tt_mv alone holds when re-searched at
+            // reduced depth with it excluded (every other move falls below
+            // tt_score - margin), it's forced -> extend it. Run before make() so
+            // the exclusion search's accumulator writes don't clobber acc[ply+1].
+            let mut ext = 0u32;
+            if depth >= 8
+                && mv == tt_mv
+                && excluded == MOVE_NONE
+                && tt_depth >= depth - 3
+                && tt_bound != BOUND_UPPER
+                && tt_score.abs() < MATE_BOUND
+            {
+                let sbeta = tt_score - 2 * depth as Score;
+                self.excluded[ply] = tt_mv;
+                let s = self.negamax(pos, (depth - 1) / 2, sbeta - 1, sbeta, ply, is_null);
+                self.excluded[ply] = MOVE_NONE;
+                if s < sbeta {
+                    ext = 1;
+                }
+            }
             let child = pos.make(mv);
             if self.use_nnue {
                 let a = crate::nnue::apply(&self.acc[ply], pos, mv);
@@ -332,7 +370,7 @@ impl<'a> Searcher<'a> {
             // window probe (late quiets at reduced depth — LMR), re-searched
             // on fail-high
             let score = if move_count == 1 {
-                -self.negamax(&child, new_depth, -beta, -alpha, ply + 1, false)
+                -self.negamax(&child, new_depth + ext, -beta, -alpha, ply + 1, false)
             } else {
                 let mut r = 0;
                 if depth >= 3 && move_count > 3 && !in_check && !mv.is_capture() && !mv.is_promo()
@@ -388,7 +426,8 @@ impl<'a> Searcher<'a> {
         }
         self.keys.pop();
 
-        if !self.stopped {
+        // don't store during an exclusion search (the result omits a move)
+        if !self.stopped && excluded == MOVE_NONE {
             let bound = if best >= beta {
                 BOUND_LOWER
             } else if best > alpha_orig {
