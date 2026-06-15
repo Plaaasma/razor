@@ -11,9 +11,11 @@
 
 **RUNNING (2026-06-15): MIRRORED 4-bucket net training** — bg `bav21my7y`, `razor_net_kbm.rs` (768x4 mirrored king-buckets by mirrored-file + factoriser, 4 SF months, 320 sb), log `logs\razorkbm-train.log`, dir `checkpoints_razorkbm\`. The top-EV lever: mirror folds both wings into each bank → ~2× data/bucket → better-trained banks → more eval at the SAME 4.72MB table/~9% tax → should tip the (validated, LTC+8) 4-bucket lever STC-positive. ~1.5-2hr.
 **MIRROR INFERENCE STAGED + COMPILES (backup `matches\candidates\nnue-kbm.rs`):** adds per-perspective flip mask (`king_flip(sq)=(file>3)?7:0`, XORs feature file bits), `king_bucket=MIRROR_MAP[file]` (`[0,1,2,3,3,2,1,0]`), Accumulator{wflip,bflip}, refresh-on-(bucket OR flip)-change. search = `search-kb.rs` (apply(child), reused). HEAD = v0.8.0 (20249).
-**NOTHING RUNNING.** Box clean. HEAD = v0.8.0 (bench 20249, tag v0.8.0) + tunable infra (bench-neutral).
+**NOTHING RUNNING.** Box clean. HEAD = v0.8.0 (bench 20249, tag v0.8.0) + tunable infra.
 
-**SPSA (200 iters) FAILED −8.8** (row 42): drifted a near-optimal base the wrong way. **Search base is already well-tuned at STC.** Tunable infra kept (`src\tune.rs` UCI options lmrbase/lmrdiv/rfpmargin/futbase/futscale, advertised in `uci.rs`, driver `matches\spsa.py`) — a future SPSA would need far more games/iter + iters + a/c decay (low EV on a tuned base; don't repeat cheaply).
+**INT8 = DEAD END for the king-bucket speed tax (2026-06-15).** Re-quantized the i16 4-bucket net to i8 ×127 in-engine (bullet `quantise::<i8>` exports 0 bytes — broken; convert at load instead). eval sane (73/+1293/−1157 ≈ i16). But **nps unchanged** (~533k vs i16 4-bucket ~541k; both ~4-5% under v0.8.0). → **the king-bucket tax is the refresh-on-bucket-crossing + bucket-indexing machinery, NOT feature-table size** (halving the table didn't help; i8→i16 widening may also kill the i16 auto-vec). int8 only useful for net SIZE. inference `nnue-kbi8.rs` kept. **So the king-bucket STC unlock = make cross-bucket refresh INCREMENTAL** (avoid the full rebuild when a king crosses a bucket) — a search/nnue change, the real remaining lever for king-buckets.
+
+**(prior) SPSA (200 iters) FAILED −8.8** (row 42): drifted a near-optimal base the wrong way. **Search base is already well-tuned at STC.** Tunable infra kept (`src\tune.rs` UCI options lmrbase/lmrdiv/rfpmargin/futbase/futscale, advertised in `uci.rs`, driver `matches\spsa.py`) — a future SPSA would need far more games/iter + iters + a/c decay (low EV on a tuned base; don't repeat cheaply).
 
 **★ M1 (~110 Elo) LEVER MAP after this session — cheap/medium STC levers EXHAUSTED ★**
   - Search ladder: log-LMR +9.5 (banked, v0.8.0); malus/corrhist/history-LMR neutral; SPSA −9 (base tuned).
