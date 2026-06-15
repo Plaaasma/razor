@@ -67,4 +67,6 @@ Standard LTC confirm: 40+0.4s.
 
 | — | 2026-06-15 | LTC test: king-bucket net vs v0.8.0 | netkb vs v0.8.0 | n/a | 40+0.4 | 62-183-55 | n/a | **+8.1±24 (LTC, mild)** | 300 games (51.2%). vs STC −0.4 (row 39). Confirms the profile: king-bucket capacity is REAL eval (LTC-positive, where the ~9% speed tax matters less) but masked at STC. Noisy (CI ±24). Not banked (HEAD stays v0.8.0). To convert to a clean win: cut the speed tax (2 buckets = half the 4.72MB table, or faster bucketed inference), or use as an LTC/§7-benchmark net |
 
+| 40 | 2026-06-15 | 2-bucket king net (768x2, 4 SF months, 320 sb) | v0.8.0 → netkb2 | [0, 10] | 8+0.08 | 182-501-219 | H0 −1.96→ | **FAIL −14.3±15** | 902 games (47.9%). WORSE than both v0.8.0 and the 4-bucket (−0.4) — non-monotonic. Speed tax gone (nps 790k ≥ v0.8.0 613k) but the file-half split (a-d/e-h) is a poor bucketing (each bank less useful) with less capacity → eval lost more than the tax saved. Inference correct (eval sane 61/+1521/−1411, dbg clean incl. d/e boundary). Conclusion: fewer buckets is NOT the path; the 4-bucket (STC −0.4 / LTC +8) is the king-bucket best. Next: MIRRORED 4-bucket (2× data/bucket → better-trained banks) or faster 4-bucket inference |
+
 <!-- Append rows below as tests complete. Never delete rows. -->
