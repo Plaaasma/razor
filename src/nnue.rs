@@ -132,18 +132,21 @@ impl Accumulator {
     pub fn eval(&self, stm: Color) -> Score {
         let net = net();
         let (us, them) = if stm == Color::White { (&self.w, &self.b) } else { (&self.b, &self.w) };
-        // i64 accumulation: at HIDDEN=1024 the i32 sum (2*HIDDEN terms of up to
-        // QA*QA*|weight|) can overflow. i64 is bit-identical when it doesn't and
-        // correct when it would. (Review-confirmed hardening for the 1024 net.)
-        let mut output = 0i64;
+        // i32 accumulation. At HIDDEN<=768 the sum stays in range and i32 is
+        // ~8% faster than i64 (the i64 widening defeats i16 SIMD auto-vec) —
+        // measured worth ~37 Elo at STC (control: i64 build lost 44.75% to this
+        // i32 line, RESULTS). A >=1024 net's 2*HIDDEN-term sum can overflow i32;
+        // restore i64 here if one is ever revived (guarded below).
+        const _: () = assert!(HIDDEN <= 768, "i32 eval accumulation may overflow above 768; restore i64 in eval()");
+        let mut output: i32 = 0;
         for i in 0..HIDDEN {
-            output += screlu(us[i]) as i64 * net.output_weights[i] as i64;
-            output += screlu(them[i]) as i64 * net.output_weights[HIDDEN + i] as i64;
+            output += screlu(us[i]) * net.output_weights[i] as i32;
+            output += screlu(them[i]) * net.output_weights[HIDDEN + i] as i32;
         }
-        output /= QA as i64;
-        output += net.output_bias as i64;
-        output *= SCALE as i64;
-        output /= (QA * QB) as i64;
+        output /= QA;
+        output += net.output_bias as i32;
+        output *= SCALE;
+        output /= QA * QB;
         output as Score
     }
 }
