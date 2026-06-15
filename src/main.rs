@@ -8,6 +8,7 @@ mod position;
 mod search;
 mod see;
 mod tt;
+mod tune;
 mod types;
 mod uci;
 mod zobrist;

@@ -70,6 +70,9 @@ impl Uci {
                             let on = value.eq_ignore_ascii_case("true");
                             crate::eval::USE_NNUE
                                 .store(on, std::sync::atomic::Ordering::Relaxed);
+                        } else if let Ok(v) = value.parse::<i32>() {
+                            // runtime-tunable search params for SPSA (no-op if id unknown)
+                            crate::tune::set(&name, v);
                         }
                     }
                 }

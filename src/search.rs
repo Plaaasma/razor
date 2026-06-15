@@ -256,7 +256,7 @@ impl<'a> Searcher<'a> {
             && ply > 0
             && depth <= 8
             && beta.abs() < MATE_BOUND
-            && static_eval - 80 * depth as Score >= beta
+            && static_eval - crate::tune::get(&crate::tune::RFP_MARGIN) * depth as Score >= beta
         {
             return static_eval;
         }
@@ -316,7 +316,10 @@ impl<'a> Searcher<'a> {
                 && !mv.is_capture()
                 && !mv.is_promo()
                 && alpha.abs() < MATE_BOUND
-                && static_eval + 80 + 120 * depth as Score <= alpha
+                && static_eval
+                    + crate::tune::get(&crate::tune::FUT_BASE)
+                    + crate::tune::get(&crate::tune::FUT_SCALE) * depth as Score
+                    <= alpha
             {
                 continue;
             }
@@ -517,10 +520,13 @@ impl<'a> Searcher<'a> {
 fn lmr_table() -> &'static [[u32; 64]; 64] {
     static LMR: OnceLock<[[u32; 64]; 64]> = OnceLock::new();
     LMR.get_or_init(|| {
+        // read tunables once (SPSA sets options before the first search)
+        let base = crate::tune::get(&crate::tune::LMR_BASE) as f64 / 100.0;
+        let div = (crate::tune::get(&crate::tune::LMR_DIV) as f64 / 100.0).max(0.1);
         let mut t = [[0u32; 64]; 64];
         for d in 1..64 {
             for m in 1..64 {
-                let r = 0.75 + (d as f64).ln() * (m as f64).ln() / 2.25;
+                let r = base + (d as f64).ln() * (m as f64).ln() / div;
                 t[d][m] = r.max(0.0) as u32;
             }
         }
