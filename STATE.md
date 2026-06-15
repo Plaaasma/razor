@@ -9,9 +9,22 @@
 
 **HEAD = v0.7.0 line + i32 acc revert + log-LMR. bench = 20249** (was 22141 at v0.7.0 tag; i32 revert kept it 22141, then LMR changed the tree → 20249). Verify `target\release\razor.exe bench` → `Nodes searched : 20249`. `src\nnue.rs` must have `HIDDEN=768` + `include_bytes!("../nets/razorsf.nnue")` + **i32** accumulation (NOT i64). search.rs has the log-LMR `lmr_table()`. Tagged **v0.8.0** (LTC-confirmed +6.95). Archived `masters\razor-v0.8.0.exe`.
 
+**RUNNING (2026-06-15): MIRRORED 4-bucket net training** — bg `bav21my7y`, `razor_net_kbm.rs` (768x4 mirrored king-buckets by mirrored-file + factoriser, 4 SF months, 320 sb), log `logs\razorkbm-train.log`, dir `checkpoints_razorkbm\`. The top-EV lever: mirror folds both wings into each bank → ~2× data/bucket → better-trained banks → more eval at the SAME 4.72MB table/~9% tax → should tip the (validated, LTC+8) 4-bucket lever STC-positive. ~1.5-2hr.
+**MIRROR INFERENCE STAGED + COMPILES (backup `matches\candidates\nnue-kbm.rs`):** adds per-perspective flip mask (`king_flip(sq)=(file>3)?7:0`, XORs feature file bits), `king_bucket=MIRROR_MAP[file]` (`[0,1,2,3,3,2,1,0]`), Accumulator{wflip,bflip}, refresh-on-(bucket OR flip)-change. search = `search-kb.rs` (apply(child), reused). HEAD = v0.8.0 (20249).
 **NOTHING RUNNING.** Box clean. HEAD = v0.8.0 (bench 20249, tag v0.8.0).
 
-**★ KING-BUCKET LEVER FULLY CHARACTERIZED (2026-06-15) ★** Real eval, speed-limited; bucket-count tuning did NOT unlock an STC win:
+**★ KING-BUCKET LEVER EXHAUSTED — speed-tax-bound (2026-06-15) ★** All 3 schemes STC ≤0: non-mirror 4-bucket **−0.4 (LTC +8)** (rows 39+note), 2-bucket −14 (row 40), mirrored 4-bucket −11 (row 41). The input capacity gives REAL eval (the LTC +8 is genuine, validated inference) but it's ≤ the **~9% feature-table cache speed tax** (4.72MB l0w vs plain 768's 1.18MB) at STC, regardless of bucket count/scheme/mirror. More/better buckets do NOT clear it. Pipelines + nets all archived (`razor_net_kb*.rs`, `nnue-kb.rs`/`nnue-kbm.rs`, `razor-netkb*.exe`, `nets\razorkb*.nnue`).
+
+**★ THE ACTUAL UNLOCK = FASTER NNUE INFERENCE (next session, top priority) ★** Cut the table-cache tax so the validated king-bucket eval (LTC +8) becomes STC-positive — AND it makes future bigger/data-hungry nets viable (the whole capacity→data path). Options, best first:
+  1. **int8 feature weights** (l0w) instead of i16 → halves the table (4.72MB→2.36MB for 4-bucket; 1.18→0.59MB for plain) → much less L2/L3 pressure. Needs: retrain/re-quantise l0w to int8 (bullet `quantise::<i8>`), accumulator stays i16 (sum of int8*activations), verify accuracy (eval sanity + the i32-overflow guard). Accuracy-risky → do carefully fresh, full verification. This is THE structural lever.
+  2. **SPSA** the search base (no fastchess SPSA → build a harness): LMR divisor/margins + revive neutrals (corrhist/history-LMR). +20-50, no eval-speed risk.
+  3. **Stronger/more teacher data** — historically the biggest lever (SF data +477). Pairs with int8 (need cheap inference to use more capacity/data). Newer test80 months or higher-node relabel.
+  NOTE: hand-AVX2 on the accumulator was already a DEAD END (2026-06-13, LLVM auto-vectorizes) — int8 (smaller footprint) is different from SIMD-widening and IS worth trying.
+
+**Session (v0.7.0→v0.8.0) net:** i64 −37 regression fixed; log-LMR +9.5 → v0.8.0; SF 4.0%/−552 → 5.0%/−511. M1 ~110 Elo out. Everything else this session = characterized dead ends (data tapped at 768, search micro-features neutral, king-buckets speed-tax-bound) — all valuable negative knowledge. Committed/tagged/archived.
+**If interrupted:** working tree = clean v0.8.0; mirror work in `nnue-kbm.rs`/`search-kb.rs` + checkpoints.
+
+**★ KING-BUCKET LEVER (prior, non-mirrored) CHARACTERIZED (2026-06-15) ★** Real eval, speed-limited; bucket-count tuning did NOT unlock an STC win:
   - **4-bucket** (file-pair, razorkb): STC −0.4 (row 39), **LTC +8±24** (row 39 note). Capacity gain ≈ ~9% speed tax (4.72MB table).
   - **2-bucket** (file-half, razorkb2): STC **−14** (row 40) — WORSE; poor split + less capacity, speed tax gone (nps 790k) but eval lost more. Non-monotonic → bucket *layout* matters a lot.
   Both inferences validated (eval sane, perft exact, dbg acc-assert clean). Pipeline reusable (`razor_net_kb*.rs`, `nnue-kb.rs`+`search-kb.rs`, candidates `razor-netkb*.exe`).
