@@ -7,6 +7,7 @@ use crate::movegen::{MoveList, generate_moves};
 use crate::position::Position;
 use crate::tt::{BOUND_EXACT, BOUND_LOWER, BOUND_UPPER, Tt, score_from_tt, score_to_tt};
 use crate::types::{MOVE_NONE, Move, PieceType};
+use std::sync::OnceLock;
 use std::time::Instant;
 
 pub struct Limits {
@@ -333,7 +334,14 @@ impl<'a> Searcher<'a> {
                 let mut r = 0;
                 if depth >= 3 && move_count > 3 && !in_check && !mv.is_capture() && !mv.is_promo()
                 {
-                    r = 1 + (move_count > 8) as u32;
+                    // log-based reduction: reduce more as depth and move index
+                    // grow (the old `1 + (mc>8)` capped at 2, far too shallow at
+                    // high depth). Re-searched at full depth on fail-high (below).
+                    let d = (depth as usize).min(63);
+                    let mc = (move_count as usize).min(63);
+                    r = lmr_table()[d][mc];
+                    // keep at least depth 1 after reduction
+                    r = r.min(new_depth.saturating_sub(1));
                 }
                 let mut s =
                     -self.negamax(&child, new_depth - r, -alpha - 1, -alpha, ply + 1, false);
@@ -501,6 +509,23 @@ impl<'a> Searcher<'a> {
             scores[j] = sc;
         }
     }
+}
+
+/// Late-move-reduction amounts indexed by [depth][move_count], capped at 63.
+/// r = 0.75 + ln(d)*ln(mc)/2.25 — the standard log curve: gentle early, steep
+/// for late quiets at high depth. Computed once.
+fn lmr_table() -> &'static [[u32; 64]; 64] {
+    static LMR: OnceLock<[[u32; 64]; 64]> = OnceLock::new();
+    LMR.get_or_init(|| {
+        let mut t = [[0u32; 64]; 64];
+        for d in 1..64 {
+            for m in 1..64 {
+                let r = 0.75 + (d as f64).ln() * (m as f64).ln() / 2.25;
+                t[d][m] = r.max(0.0) as u32;
+            }
+        }
+        t
+    })
 }
 
 fn format_score(s: Score) -> String {
