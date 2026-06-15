@@ -53,4 +53,12 @@ Standard LTC confirm: 40+0.4s.
 
 | 34 | 2026-06-14 | log-based LMR (i32) | v0.7.0 → lmr2 | [0, 10] | 8+0.08 | 330-986-286 | +1.40 | **KEPT (operator) ~+9.5±10** | 1602 games (51.4%). `r=0.75+ln(d)*ln(mc)/2.25` replacing the crude `1+(mc>8)` (max r=2, badly under-reducing at high depth). Consistently positive, never negative; central +9.5 sits AT elo1=10 → won't formally resolve (futility/seeprune precedent, rows 15/18). Textbook log-LMR, 1602 games of data → kept as new base. No speed tax (bench 20249, pure reduction-amount change). First fair-baseline search win post-i64-fix. SPSA-tune divisor later |
 
+| 35 | 2026-06-15 | correction history — attempt 1 | LMR base → corrhist | [0, 10] | 8+0.08 | 116-634-154 | H0 −2.36 | **FAIL −14.6±12** | 904 games (47.9%). Pawn-struct corrhist, EMA weight w≤16 step/256, ±64cp cap. Negative: aggressive EMA lets an outlier tactical residual snap a pawn-structure's correction to the cap, corrupting all positions sharing that structure. Retry (attempt 2): gentler EMA (w≤8, step/1024 = slow mean) + smaller ±32cp cap → corrections reflect the MEAN residual, outlier-resistant |
+
+| 36 | 2026-06-15 | correction history attempt 2 (gentler EMA) | LMR base → corrhist2 | [0, 10] | 8+0.08 | 148-606-144 | ~0 (−0.16) | **NEUTRAL +1.5±12 — deferred** | 898 games (50.2%). Gentler EMA (w≤8 step/1024, ±32cp cap) fixed attempt-1's −14.6 → neutral. No Elo gain at default tuning (the clean SF-distilled 768 net has little exploitable pawn-structure bias). NOT kept (avoid banking neutral complexity as base); implementation retained `search-corrhist2.rs` for future SPSA tuning. Eval-smoothing better served by strength/depth. Pivot → LMR follow-ups |
+
+| 37 | 2026-06-15 | history-based LMR (r −= hist/150k) | LMR base → lmrhist | [0, 10] | 8+0.08 | 151-599-148 | ~0 (−0.21) | **NEUTRAL +1.2±12 — deferred** | 898 games (50.2%). Divisor 150k too conservative (only top quiets cross it) → barely activates → neutral. Lower divisor might gain but risks over-reduction; deferred to SPSA. Not banked. Source `search-lmrhist.rs` kept |
+
+| 38 | 2026-06-15 | LTC confirm: LMR base vs v0.7.0 | fixed 300 games | n/a | 40+0.4 | 43-220-37 | n/a | **CONFIRMED +6.95±19** | 300 games (51.0%). log-LMR holds at LTC, consistent with STC +9.5. i32 acc identical in both → isolates the log-LMR gain. → tag **v0.8.0** (i32 accumulation + log-LMR line, bench 20249) |
+
 <!-- Append rows below as tests complete. Never delete rows. -->
