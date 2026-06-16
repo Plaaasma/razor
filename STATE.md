@@ -15,7 +15,9 @@
 
 **★ HONEST CORRECTION (2026-06-15): king-buckets are ~NEUTRAL, not "real-eval-masked-by-tax" ★** Gating the apply() king-check on king-moves-only gave NO speedup (opt ~541k vs v0.8.0 ~562k, eval byte-identical) → the "~9% tax" was mostly noise, and the 4-bucket "LTC +8" had CI ±24 (included 0). Real read: input-capacity (buckets) doesn't improve eval over plain-768 on this data. BUT the capacity-limited conclusion is NOT clean — the 1024-width failure (−54) was i64-CONTAMINATED (1024 needs i64 output acc for overflow = the slow path). So one capacity axis is genuinely untried + i32-safe + low-speed-cost: **NET DEPTH (a 2nd hidden layer)** — adds non-linearity (extracts more from the same data in a way width/buckets can't), HIDDEN stays 768 (i32-safe), the added small layer (e.g. 1536→16→1) costs ~nothing vs the 768 accumulator. **★ SINGULAR EXTENSIONS PASSED +35.4±15 (row 43, committed cae7c56) — the M1-progress lever ★** Biggest search win since the early ladder; confirms search-side levers are productive where net-capacity was teacher-limited. **HEAD = v0.8.0 + singular** (bench still 20249, singular only fires depth≥8). Search lever is NOT tapped after all (the earlier "search tapped" was ordering/margin tweaks; singular is selective deepening — a different, big mechanism).
 
-**NOTHING RUNNING.** Box clean. HEAD = **v0.9.0** (tag v0.9.0, bench 20249), the session's strength line.
+**NOTHING RUNNING.** Box clean. HEAD = **v0.9.0** (tag v0.9.0, bench 20249).
+
+**SINGULAR DERIVATIVES EXHAUSTED:** singular ext **+35 (kept, v0.9.0)**, but double-ext −58 (row 45) and multi-cut −9 (row 46) both FAIL → singular is well-placed; pushing selectivity harder over-does it. Cheap search ladder now genuinely tapped (selectivity peaked at singular; ordering/margins/SPSA were neutral earlier).
 
 **Double extensions FAILED −58.5 (row 45)** — naive +2 over-extends; HEAD stayed v0.9.0. **M1 recheck v0.9.0 = 4.75%/−520.9±55** (row M1, ~unchanged vs v0.8.0 within noise — dev signal is SELFPLAY SPRT, not the gap-dominated vs-SF%; re-check M1 per ~+50-100 cumulative Elo).
 

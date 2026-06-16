@@ -83,4 +83,6 @@ Standard LTC confirm: 40+0.4s.
 
 | 45 | 2026-06-15 | double extensions (singular +2) | v0.9.0 → dext | [0, 10] | 8+0.08 | 29-227-86 | H0 −2.95 | **FAIL −58.5±21** | 342 games (41.7%). +2 ext when exclusion fails low by >20cp over-triggers → too many forced lines double-deepened → loses breadth/time at STC (dbg didn't crash, but STC −58). Naive double-ext is bad; a proper one needs much tighter gates (large margin, per-line ext cap, non-PV only). Reverted (HEAD = v0.9.0). Next ladder: multi-cut (selectivity, like singular), SE-margin SPSA, improving heuristic |
 
+| 46 | 2026-06-15 | multi-cut (off singular exclusion search) | v0.9.0 → mcut | [0, 10] | 8+0.08 | 118-634-142 | H0 −1.69→ | **FAIL −9.3±12** | 894 games (48.7%). Speculative prune (return s when the exclusion search ≥ beta at a non-PV node) occasionally cuts non-fail-high nodes → −9. Both singular DERIVATIVES now fail (double-ext −58, multi-cut −9) → singular as-implemented is well-placed; pushing the selectivity harder over-does it. HEAD = v0.9.0. Next: SE-margin tune (small/uncertain) or the big net/data levers |
+
 <!-- Append rows below as tests complete. Never delete rows. -->
