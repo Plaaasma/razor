@@ -374,7 +374,7 @@ impl<'a> Searcher<'a> {
                 && tt_bound != BOUND_UPPER
                 && tt_score.abs() < MATE_BOUND
             {
-                let sbeta = tt_score - 2 * depth as Score;
+                let sbeta = tt_score - crate::tune::get(&crate::tune::SE_MARGIN) * depth as Score / 100;
                 self.excluded[ply] = tt_mv;
                 let s = self.negamax(pos, (depth - 1) / 2, sbeta - 1, sbeta, ply, is_null);
                 self.excluded[ply] = MOVE_NONE;

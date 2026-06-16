@@ -48,6 +48,7 @@ impl Uci {
                     crate::send!("option name rfpmargin type spin default 80 min 20 max 200");
                     crate::send!("option name futbase type spin default 80 min 0 max 300");
                     crate::send!("option name futscale type spin default 120 min 20 max 300");
+                    crate::send!("option name semargin type spin default 200 min 50 max 500");
                     crate::send!("uciok");
                 }
                 "isready" => crate::send!("readyok"),

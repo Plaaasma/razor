@@ -17,6 +17,8 @@ pub static RFP_MARGIN: AtomicI32 = AtomicI32::new(80);
 /// futility pruning margin: FUT_BASE + FUT_SCALE * depth (cp)
 pub static FUT_BASE: AtomicI32 = AtomicI32::new(80);
 pub static FUT_SCALE: AtomicI32 = AtomicI32::new(120);
+/// singular-extension margin: sbeta = tt_score - SE_MARGIN/100 * depth (cp/ply)
+pub static SE_MARGIN: AtomicI32 = AtomicI32::new(200); // 2.00 * depth
 
 #[inline(always)]
 pub fn get(a: &AtomicI32) -> i32 {
@@ -31,6 +33,7 @@ pub fn set(name: &str, v: i32) -> bool {
         "rfpmargin" => &RFP_MARGIN,
         "futbase" => &FUT_BASE,
         "futscale" => &FUT_SCALE,
+        "semargin" => &SE_MARGIN,
         _ => return false,
     };
     a.store(v, Ordering::Relaxed);

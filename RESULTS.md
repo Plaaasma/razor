@@ -115,4 +115,6 @@ Standard LTC confirm: 40+0.4s.
 
 | 61 | 2026-06-16 | improving heuristic — bug-fixed (RFP depth−improving + LMR +!improving) | v0.11.0 → improving2 | [0, 10] | 8+0.08 | 111-660-129 | −1.41 | **REJECTED −7 (49%)** | 900 games. Bug fix (ply−2==−MATE → not-improving) helped vs buggy −12 (row 60) but still net-negative. Improving genuinely doesn't help Razor (eval sensitive to the extra RFP/LMR aggressiveness). Not kept. HEAD = v0.11.0. 3rd cheap-search fail post-conthist (2-ply neutral, razoring −6, improving −7) → cheap search dry; next distinct lever = probcut. |
 
+| 62 | 2026-06-16 | probcut (depth≥5, SEE-filtered capture vs β+180 at depth−4) | v0.11.0 → probcut | [0, 10] | 8+0.08 | 122-663-119 | −0.20 | **NEUTRAL +1.2 (50.2%)** | 904 games. Conservative probcut (margin 180, SEE-gated) fires rarely/safely → ~0. Not kept. **4th cheap/standard search result post-conthist all neutral/neg (2-ply 0, razoring −6, improving −7, probcut +1) → cheap+standard search EXHAUSTED.** Banked wins (log-LMR/singular/IIR/conthist) are the vein. Next: proper SPSA (expose singular margin) or compute-heavy eval. HEAD = v0.11.0. |
+
 <!-- Append rows below as tests complete. Never delete rows. -->
