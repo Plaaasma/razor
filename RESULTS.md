@@ -113,4 +113,6 @@ Standard LTC confirm: 40+0.4s.
 
 | 60 | 2026-06-16 | improving heuristic (RFP depth−improving + LMR +!improving) | v0.11.0 → improving | [0, 10] | 8+0.08 | 106-652-138 | −2.15 | **FAIL −12.4 (buggy)** | 896 games. BUG: in-check nodes store static_eval=−MATE in eval_stack; 2 plies after a check, improving compares vs −MATE → spuriously TRUE → RFP over-prunes after checks. Retest with fix (treat ply−2==−MATE as not-improving). |
 
+| 61 | 2026-06-16 | improving heuristic — bug-fixed (RFP depth−improving + LMR +!improving) | v0.11.0 → improving2 | [0, 10] | 8+0.08 | 111-660-129 | −1.41 | **REJECTED −7 (49%)** | 900 games. Bug fix (ply−2==−MATE → not-improving) helped vs buggy −12 (row 60) but still net-negative. Improving genuinely doesn't help Razor (eval sensitive to the extra RFP/LMR aggressiveness). Not kept. HEAD = v0.11.0. 3rd cheap-search fail post-conthist (2-ply neutral, razoring −6, improving −7) → cheap search dry; next distinct lever = probcut. |
+
 <!-- Append rows below as tests complete. Never delete rows. -->
