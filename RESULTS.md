@@ -79,4 +79,8 @@ Standard LTC confirm: 40+0.4s.
 
 | 44 | 2026-06-15 | LTC confirm: singular vs v0.8.0 | fixed 300 games | n/a | 40+0.4 | 44-226-30 | n/a | **CONFIRMED +16.2±19** | 300 games (52.3%). Singular holds at LTC (vs STC +35; lower central but clearly positive, 75% draws). → tag **v0.9.0** |
 
+| M1 | 2026-06-15 | M1 recheck v0.9.0 vs SF18 | v0.9.0 vs SF18 | n/a | 8+0.08 1t | 0-38-362 | n/a | **NOT MET (4.75%)** −520.9±55 | 400 games. ~unchanged from v0.8.0's 5.0%/−511 (overlap within ±55 noise). Singular's +35 selfplay (LTC-confirmed real) doesn't register on the gap-dominated/noisy vs-SF% (0 wins; % is draw-dominated vs a far-stronger SF; 400g can't resolve 35 Elo at 5%). **LESSON: vs-SF% is too noisy to guide dev at ~5% — use selfplay SPRT as the signal; re-check M1 only per ~+50-100 cumulative Elo.** M1 (−400) ~115 Elo out |
+
+| 45 | 2026-06-15 | double extensions (singular +2) | v0.9.0 → dext | [0, 10] | 8+0.08 | 29-227-86 | H0 −2.95 | **FAIL −58.5±21** | 342 games (41.7%). +2 ext when exclusion fails low by >20cp over-triggers → too many forced lines double-deepened → loses breadth/time at STC (dbg didn't crash, but STC −58). Naive double-ext is bad; a proper one needs much tighter gates (large margin, per-line ext cap, non-PV only). Reverted (HEAD = v0.9.0). Next ladder: multi-cut (selectivity, like singular), SE-margin SPSA, improving heuristic |
+
 <!-- Append rows below as tests complete. Never delete rows. -->
