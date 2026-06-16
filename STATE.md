@@ -9,6 +9,14 @@
 
 **★ HEAD = v0.11.0 (tag) = v0.10.0 + continuation history. bench = 20008.** Verify `target\release\razor.exe bench` → 20008. conthist +7.3 (row 53). Net-architecture axis EXHAUSTED (width/buckets/data-quantity/depth all tapped — teacher-limited at 768). Search axis productive again via conthist (move-ordering). Banked search wins: log-LMR +9.5, singular +35, IIR +16, conthist +7. Archives masters\razor-v0.8.0…v0.11.0.exe. Post-conthist cheap search tapped again (2-ply conthist neutral row 54, razoring −6 row 55).
 
+**★★ EVAL AXIS FULLY MAPPED + CAPPED (2026-06-16 session 4) — read this before any eval work ★★**
+The net is teacher-limited at the public test80 label quality, and that ceiling is NOT cheaply raisable:
+  - Net architecture exhausted: width(1024 speed-capped), king-buckets(neutral), data-quantity(4mo neutral r51), DEPTH(2-layer d2 −210, only 3% loss r52). All tapped.
+  - Stronger teacher (deeper SF18 labels) = the only real eval lever, +16 at matched scale (A/B 50k>8k r56). BUT not bankable:
+    · from-scratch on 2M = −500 (scale-dominated r57); matching razorsf scale needs ~100M @ 50k ≈ DAYS of labeling (SF18 ~9Mnps aggregate under 24-way load, bandwidth-bound; public middlegames ~1.7-4 pos/s/worker @50k).
+    · fine-tune razorsf on Razor-pos = −233 (distribution shift r58); on PUBLIC-pos gentle = −82 (r59: fine-tuning toward SF18-50k labels de-optimizes a net trained on test80 labels; non-linear label-shape diff, not a fixable rescale).
+  - **PRACTICAL CONCLUSION: eval is capped. Don't re-explore unless willing to spend days labeling ~100M @ 50k for a from-scratch net (the ONLY path to the +16), or a stronger-teacher-than-SF18.** Tooling all built + reusable (label_sf.py incremental, razor_dump_fens.exe public→FEN, razor_net_dg.rs from-scratch, razor_net_ft.rs fine-tune, ab_label.ps1). → MISSION now leans on SEARCH for tractable gains; eval needs a compute-heavy from-scratch run to move.
+
 **★ DATAGEN FINDINGS (2026-06-16 session 4) — deeper teacher VALIDATED, scale dominates, FINE-TUNE is the path:**
   - **A/B (row 56): SF18 50k labels beat 8k labels +15.9 Elo** on the same 2M Razor positions → deeper teacher is a real eval lever (+16).
   - **Scale check (row 57): a 2M strong-teacher net loses 0-74 (~−500) to razorsf** (full ~100M-position net) → SCALE DOMINATES; from-scratch relabel can't beat razorsf without ~100M positions @ 50k (~6 days labeling, infeasible).
