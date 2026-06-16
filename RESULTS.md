@@ -101,4 +101,6 @@ Standard LTC confirm: 40+0.4s.
 
 | 54 | 2026-06-16 | 2-ply continuation history | v0.11.0 → ch2 | [0, 10] | 8+0.08 | 124-654-120 | killed −0.13 | **NEUTRAL +1.6±11** | 898 games (50.2%). 2-ply cont_hist (move 2 plies up, stm's own prev) on top of the 1-ply table (v0.11.0) adds ~nothing — the 1-ply already captures the continuation signal for Razor. Not kept. HEAD = v0.11.0. Cheap search well low again (2-ply neutral; malus/LMP/dext/mcut/lmrpv all failed earlier). → next big mission lever = stronger-teacher datagen. |
 
+| 55 | 2026-06-16 | razoring (depth≤3 qsearch fail-low) | v0.11.0 → razoring | [0, 10] | 8+0.08 | 136-722-142 | killed −1.30 | **REJECTED ~−2 to −6** | 1000 games (49.7%). Razor's RFP + futility + qsearch already cover fail-low pruning; razoring's qsearch-verify cost + occasional tactical miss → net negative. Not kept. HEAD = v0.11.0. **Cheap search now genuinely tapped this session (2-ply conthist neutral, razoring −6; banked wins were conthist/IIR/singular/log-LMR). → pivot to the mission's one big eval lever: stronger-teacher datagen (SF18 relabel).** |
+
 <!-- Append rows below as tests complete. Never delete rows. -->
