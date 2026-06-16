@@ -57,6 +57,14 @@ pub struct Searcher<'a> {
     killers: [[Move; 2]; MAX_PLY],
     /// butterfly history: [stm][from][to] cutoff counter for quiet ordering
     history: Box<[[[i32; 64]; 64]; 2]>,
+    /// continuation history: [prev_pt][prev_to][cur_pt][cur_to] cutoff counter,
+    /// keyed by the piece+to of the move one ply up — sharpens quiet ordering
+    /// beyond plain butterfly history (quiets that refute a given prior move).
+    cont_hist: Box<[[[[i32; 64]; 6]; 64]; 6]>,
+    /// (piece-type idx, to-sq) of the move that led into each ply; pt == 6 means
+    /// none (root, or after a null move). Indexes `cont_hist`'s first two dims.
+    prev_pt: [usize; MAX_PLY],
+    prev_to: [usize; MAX_PLY],
     /// move excluded from search at each ply (for singular-extension verification
     /// searches); MOVE_NONE normally. Per-ply to avoid threading a param through
     /// every negamax call site.
@@ -82,6 +90,9 @@ impl<'a> Searcher<'a> {
             use_nnue: true,
             killers: [[MOVE_NONE; 2]; MAX_PLY],
             history: Box::new([[[0; 64]; 64]; 2]),
+            cont_hist: Box::new([[[[0; 64]; 6]; 64]; 6]),
+            prev_pt: [6; MAX_PLY],
+            prev_to: [0; MAX_PLY],
             excluded: [MOVE_NONE; MAX_PLY],
         }
     }
@@ -303,6 +314,7 @@ impl<'a> Searcher<'a> {
                 self.acc[ply + 1] = self.acc[ply].clone();
             }
             self.keys.push(pos.key);
+            self.prev_pt[ply + 1] = 6; // null move: no continuation context
             let score = -self.negamax(&child, depth - 3, -beta, -beta + 1, ply + 1, true);
             self.keys.pop();
             if self.stopped {
@@ -371,6 +383,9 @@ impl<'a> Searcher<'a> {
                 }
             }
             let child = pos.make(mv);
+            // continuation context for the child: this move's piece + dest
+            self.prev_pt[ply + 1] = pos.piece_on(mv.from()).unwrap().1.idx();
+            self.prev_to[ply + 1] = mv.to() as usize;
             if self.use_nnue {
                 let a = crate::nnue::apply(&self.acc[ply], pos, mv);
                 self.acc[ply + 1] = a;
@@ -426,6 +441,18 @@ impl<'a> Searcher<'a> {
                             // keep history below the killer band in move ordering
                             if *h > 800_000 {
                                 *h /= 2;
+                            }
+                            // continuation history: reward the cutoff quiet in the
+                            // context of the move one ply up
+                            let pp = self.prev_pt[ply];
+                            if pp < 6 {
+                                let cpt = pos.piece_on(mv.from()).unwrap().1.idx();
+                                let ch = &mut self.cont_hist[pp][self.prev_to[ply]][cpt]
+                                    [mv.to() as usize];
+                                *ch += (depth * depth) as i32;
+                                if *ch > 800_000 {
+                                    *ch /= 2;
+                                }
                             }
                         }
                         break;
@@ -537,13 +564,21 @@ impl<'a> Searcher<'a> {
                 };
                 let attacker = pos.piece_on(mv.from()).unwrap().1;
                 scores[i] =
-                    1_000_000 + 10 * PIECE_VALUE[victim.idx()] - PIECE_VALUE[attacker.idx()];
+                    2_000_000 + 10 * PIECE_VALUE[victim.idx()] - PIECE_VALUE[attacker.idx()];
             } else if mv == killers[0] {
-                scores[i] = 900_000;
+                scores[i] = 1_950_000;
             } else if mv == killers[1] {
-                scores[i] = 899_999;
+                scores[i] = 1_949_999;
             } else {
-                scores[i] = self.history[pos.stm.idx()][mv.from() as usize][mv.to() as usize];
+                // quiet: butterfly + continuation history (each capped 800k, so
+                // the sum stays below the killer band above)
+                let mut s = self.history[pos.stm.idx()][mv.from() as usize][mv.to() as usize];
+                let pp = self.prev_pt[ply];
+                if pp < 6 {
+                    let cpt = pos.piece_on(mv.from()).unwrap().1.idx();
+                    s += self.cont_hist[pp][self.prev_to[ply]][cpt][mv.to() as usize];
+                }
+                scores[i] = s;
             }
         }
         // insertion sort, descending, moves and scores in tandem (lists are
