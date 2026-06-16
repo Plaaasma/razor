@@ -85,4 +85,6 @@ Standard LTC confirm: 40+0.4s.
 
 | 46 | 2026-06-15 | multi-cut (off singular exclusion search) | v0.9.0 → mcut | [0, 10] | 8+0.08 | 118-634-142 | H0 −1.69→ | **FAIL −9.3±12** | 894 games (48.7%). Speculative prune (return s when the exclusion search ≥ beta at a non-PV node) occasionally cuts non-fail-high nodes → −9. Both singular DERIVATIVES now fail (double-ext −58, multi-cut −9) → singular as-implemented is well-placed; pushing the selectivity harder over-does it. HEAD = v0.9.0. Next: SE-margin tune (small/uncertain) or the big net/data levers |
 
+| 47 | 2026-06-15 | **internal iterative reduction (IIR)** | v0.9.0 → iir | [0, 10] | 8+0.08 | 305-1047-234 | H1 2.95 | **PASS +15.6±10** | 1586 games (52.2%). depth≥4 + no TT move → depth−1 (poor ordering, search shallower). 2nd straight search-side win (after singular +35) — search is the productive vein. → applied (HEAD = v0.9.0 + IIR, bench 20137). Tag v0.10.0 after a batch + LTC |
+
 <!-- Append rows below as tests complete. Never delete rows. -->

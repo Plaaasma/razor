@@ -262,6 +262,15 @@ impl<'a> Searcher<'a> {
             }
         }
 
+        // internal iterative reduction: with no TT move at a decent depth the
+        // move ordering is poor, so search one ply shallower (cheaper; the
+        // shallow result fills the TT and the next iteration re-searches well).
+        let depth = if depth >= 4 && tt_mv == MOVE_NONE && excluded == MOVE_NONE {
+            depth - 1
+        } else {
+            depth
+        };
+
         let in_check = pos.in_check();
         let static_eval = if in_check { -MATE } else { self.eval(pos, ply) };
 
