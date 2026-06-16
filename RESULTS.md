@@ -99,4 +99,6 @@ Standard LTC confirm: 40+0.4s.
 
 | 53 | 2026-06-16 | continuation history (1-ply, redo i32) | v0.10.0 → conthist | [0, 10] | 8+0.08 | 398-2063-339 | +2.24 | **KEPT ~+7.3±6.4** | 2800 games (51.05%). LLR climbed steadily 1.39→1.69→2.24; CI lower bound +0.9 (>0). Real small gain (log-LMR pattern, row 34) — kept via operator judgment (LLR 2.24 > log-LMR's 1.40 at keep). 1-ply [prev_pt][prev_to][cur_pt][cur_to] bonus-only, folded into quiet ordering + cutoffs; ordering bands rescaled (killers 1.95M, captures 2M). bench 20008, perft exit 0. **Vindicates the i64-contamination diagnosis: conthist v1 (row 31 −50.5) was the i64 handicap, NOT the feature.** Razor had only butterfly history → first move-ordering win since the early ladder. **New base = v0.11.0.** Next: history-malus + 2-ply conthist (compounding). |
 
+| 54 | 2026-06-16 | 2-ply continuation history | v0.11.0 → ch2 | [0, 10] | 8+0.08 | 124-654-120 | killed −0.13 | **NEUTRAL +1.6±11** | 898 games (50.2%). 2-ply cont_hist (move 2 plies up, stm's own prev) on top of the 1-ply table (v0.11.0) adds ~nothing — the 1-ply already captures the continuation signal for Razor. Not kept. HEAD = v0.11.0. Cheap search well low again (2-ply neutral; malus/LMP/dext/mcut/lmrpv all failed earlier). → next big mission lever = stronger-teacher datagen. |
+
 <!-- Append rows below as tests complete. Never delete rows. -->
