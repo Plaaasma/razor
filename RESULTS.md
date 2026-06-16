@@ -91,4 +91,6 @@ Standard LTC confirm: 40+0.4s.
 
 | 49 | 2026-06-15 | LTC confirm: IIR vs v0.9.0 | fixed 300 games | n/a | 40+0.4 | 50-222-28 | n/a | **CONFIRMED +25.5±20** | 300 games (53.7%). IIR even stronger at LTC than STC (+15.6) — more TT-miss nodes to reduce at depth. → tag **v0.10.0** (= v0.9.0 + IIR) |
 
+| 50 | 2026-06-15 | LMR reduce-less-in-PV | v0.10.0 → lmrpv | [0, 10] | 8+0.08 | 107-670-121 | killed ~−5 | **REJECTED −5.4±11** | 898 games (49.2%). Full r−1 at every PV node inflates nodes +50% (bench 30396) → cost ~cancels the PV-accuracy gain → −5. Too broad; a depth-gated/fractional version is SPSA territory. Not kept. **Cheap search tweaks post-IIR all marginal/neg (LMP −96, dext −58, mcut −9, lmrpv −5) → ladder tapped at v0.10.0; singular+IIR were the wins.** Next: careful SPSA of the param set, or the big net/data levers |
+
 <!-- Append rows below as tests complete. Never delete rows. -->
