@@ -77,4 +77,6 @@ Standard LTC confirm: 40+0.4s.
 
 | 43 | 2026-06-15 | **singular extensions** | v0.8.0 → singular | [0, 10] | 8+0.08 | 127-418-65 | H1 2.97 | **PASS +35.4±15** | 610 games (55.1%, LOS 100%). depth≥8: exclusion search of all-but-tt_mv at (depth−1)/2, window around tt_score−2·depth; +1 ply if tt_mv forced. Per-ply `excluded[ply]` field, dbg-validated (no diverge/recursion). **Biggest search win since the early ladder** — confirms search-side levers aren't teacher-limited (where net-capacity was). → apply, LTC-confirm, tag v0.9.0, M1 recheck |
 
+| 44 | 2026-06-15 | LTC confirm: singular vs v0.8.0 | fixed 300 games | n/a | 40+0.4 | 44-226-30 | n/a | **CONFIRMED +16.2±19** | 300 games (52.3%). Singular holds at LTC (vs STC +35; lower central but clearly positive, 75% draws). → tag **v0.9.0** |
+
 <!-- Append rows below as tests complete. Never delete rows. -->
