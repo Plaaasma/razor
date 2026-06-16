@@ -87,4 +87,8 @@ Standard LTC confirm: 40+0.4s.
 
 | 47 | 2026-06-15 | **internal iterative reduction (IIR)** | v0.9.0 → iir | [0, 10] | 8+0.08 | 305-1047-234 | H1 2.95 | **PASS +15.6±10** | 1586 games (52.2%). depth≥4 + no TT move → depth−1 (poor ordering, search shallower). 2nd straight search-side win (after singular +35) — search is the productive vein. → applied (HEAD = v0.9.0 + IIR, bench 20137). Tag v0.10.0 after a batch + LTC |
 
+| 48 | 2026-06-15 | LMP retry (3+d², depth≤6) | IIR base → lmp2 | [0, 10] | 8+0.08 | 31-150-109 | H0 −2.96 | **FAIL −95.8±26** | 290 games (36.6%). WAY too aggressive — bench HALVED (20137→10449) = pruned ~50% of quiets → −96. Same over-aggression as the early LMP fail (−43). LMP doesn't suit this engine at quadratic-low-depth thresholds; a working LMP would need a much gentler limit (SPSA territory). Abandoned for now; secure singular+IIR as v0.10.0 instead. HEAD = v0.9.0+IIR (LMP never applied) |
+
+| 49 | 2026-06-15 | LTC confirm: IIR vs v0.9.0 | fixed 300 games | n/a | 40+0.4 | 50-222-28 | n/a | **CONFIRMED +25.5±20** | 300 games (53.7%). IIR even stronger at LTC than STC (+15.6) — more TT-miss nodes to reduce at depth. → tag **v0.10.0** (= v0.9.0 + IIR) |
+
 <!-- Append rows below as tests complete. Never delete rows. -->
