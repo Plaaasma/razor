@@ -121,4 +121,6 @@ Standard LTC confirm: 40+0.4s.
 
 | 64 | 2026-06-16 | M1 re-check: v0.11.0 vs SF18 (STC proxy, 1T) | — | n/a | 8+0.08 1T | 1-107-692 | — | **6.81% / −454±30** | 800 games vs SF18. Up from v0.9.0's 4.75%/−520 (+66 Elo from IIR+conthist; noisy ±30). **★ KEY: official M1 (vs_stockfish.ps1) is 8-THREAD, but Razor is SINGLE-THREADED → in M1 it's 1-thread Razor vs 8-thread SF18 (crippled). LAZY SMP is the biggest untapped M1 lever (1→8 threads ≈ +100-150 Elo at M1 conditions — could pass M1's 10% alone).** Next: implement lazy SMP (needs lockless/shared TT). |
 
+| 65 | 2026-06-16 | **lazy SMP (8 threads)** vs v0.11.0 (1 thread), same hash/TC | v0.11.0 → SMP | [0, 10] | 8+0.08 conc2 | 35-82-3 | +0.9→ | **+95±35 (63%) → v0.12.0** | 120 games, W35-L3-D82, LLR climbing (+117 early). Lockless TT + `search_threaded` (N searchers sharing TT, scoped threads, shared atomic stop). 8T ≈ +95-117 Elo over 1T at STC — bigger at LTC. 1-thread play identical (bench 20008, perft exact) so SPRT ladder unaffected; validated via 8T-vs-1T self-play (SMP can't be tested on the 1T ladder). **★ The M1 lever: official M1 is 8-thread; single-threaded Razor was crippled there. Now multi-threaded.** New base **v0.12.0**. Next: M1 8T-vs-8T vs SF18 (re-measure gap); add helper diversity for more SMP Elo. |
+
 <!-- Append rows below as tests complete. Never delete rows. -->
