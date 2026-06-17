@@ -131,4 +131,6 @@ Standard LTC confirm: 40+0.4s.
 
 | 69 | 2026-06-17 | **★ M1 CONFIRMED (LTC, 500g): v0.12.1 8T vs SF18 ★** | — | n/a | 40+0.4 8T conc2 | 0-128-372 | — | **★ 12.80% / −333±24 — M1 PASSED ★** | 500 games. CI lower bound ~10.4% **> the ≥10% M1 bar** → M1 milestone confidently confirmed (vs v0.12.0 borderline 10.6% row 67). 26% draw rate, 0 wins. **Gap −333 (was −454 1T session start, −370 v0.12.0). SMP (+95-117) + diversity (+11) = the M1 achiever.** Brief §7 defining milestone MET. Next (within-50 = −50, still far): regime change — stronger-than-SF18 teacher / bigger-fast net / more SMP scaling. |
 
+| 70 | 2026-06-17 | stability-based time management | v0.12.1 → tm | [0, 10] | 8+0.08 1T | 332-1854-266 | +2.99 | **PASS +9.35±6.5 → v0.12.2** | 2452 games (51.35%), **H1 ACCEPTED** (formal [0,10] pass). Best-root-move stability scales the soft limit (TM_FACTOR 135%→73%: stop sooner when stable, search longer when changing; hard cap unchanged). Real 1T gain (affects ladder + M1). bench 20008 (TM inactive in depth/movetime modes), perft exact. Razor's TM was crude `t/25+inc/2` — first TM improvement. New base v0.12.2. |
+
 <!-- Append rows below as tests complete. Never delete rows. -->

@@ -139,6 +139,16 @@ impl<'a> Searcher<'a> {
 
         let mut best = MOVE_NONE;
         let mut prev_score = 0;
+        // stability-based time management: when the best root move holds across
+        // iterations, spend less time; when it keeps changing, spend more (still
+        // bounded by the hard limit). Only with a real clock — movetime/depth/
+        // infinite searches keep their exact soft limit (bench unaffected).
+        let stability_tm = limits.time.is_some() && limits.movetime.is_none();
+        let mut prev_best = MOVE_NONE;
+        let mut stability = 0usize;
+        // soft-limit multiplier in %, indexed by best-move stability (0 = just
+        // changed → search longer; high = stable → stop sooner).
+        const TM_FACTOR: [u64; 9] = [135, 118, 104, 95, 88, 83, 79, 76, 73];
         for depth in 1..=self.max_depth {
             // aspiration window around the previous iteration's score; widen
             // exponentially on fail until the result lands inside
@@ -169,6 +179,8 @@ impl<'a> Searcher<'a> {
             prev_score = score;
             self.root_score = score;
             best = self.best_root;
+            stability = if best == prev_best { (stability + 1).min(8) } else { 0 };
+            prev_best = best;
             let ms = self.start.elapsed().as_millis() as u64;
             let nps = if ms > 0 { self.nodes * 1000 / ms } else { 0 };
             if !self.silent {
@@ -178,7 +190,12 @@ impl<'a> Searcher<'a> {
                     self.nodes
                 );
             }
-            if ms >= self.soft_limit_ms {
+            let eff_soft = if stability_tm {
+                self.soft_limit_ms.saturating_mul(TM_FACTOR[stability]) / 100
+            } else {
+                self.soft_limit_ms
+            };
+            if ms >= eff_soft {
                 break;
             }
         }
