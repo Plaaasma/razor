@@ -348,7 +348,9 @@ impl<'a> Searcher<'a> {
             }
             self.keys.push(pos.key);
             self.prev_pt[ply + 1] = 6; // null move: no continuation context
-            let score = -self.negamax(&child, depth - 3, -beta, -beta + 1, ply + 1, true);
+            // adaptive null-move reduction: deeper reduction as depth grows
+            let r = 3 + depth / 4;
+            let score = -self.negamax(&child, depth - r, -beta, -beta + 1, ply + 1, true);
             self.keys.pop();
             if self.stopped {
                 return 0;

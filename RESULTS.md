@@ -137,4 +137,6 @@ Standard LTC confirm: 40+0.4s.
 
 | 72 | 2026-06-17 | score-based TM extension (think longer on score drop) | v0.12.2 → scoretm | [0, 10] | 8+0.08 1T | 206-1172-224 | killed −0.x | **REJECTED −3.9 (49.4%)** | 1602 games. Extending soft limit ×1.3 on a ≥30cp root-score drop over-spends time → −4. Stability TM (row 70, kept) was the TM win; this extension doesn't add. Not kept. HEAD = v0.12.2. |
 
+| 73 | 2026-06-17 | adaptive NMP reduction (R = 3 + depth/4) | v0.12.2 → nmp | [0, 10] | 8+0.08 1T | 152-662-94 | +2.95 | **PASS +22.2±11 → v0.12.3** | 908 games (53.19%), **H1 ACCEPTED**. NMP was fixed R=3; depth-scaled reduction (R=3+depth/4) deepens cuts at high depth → +22, biggest search win since singular. bench 19963, perft exact. New base v0.12.3. Next: eval-based NMP R term (+min((eval−beta)/200,3)). |
+
 <!-- Append rows below as tests complete. Never delete rows. -->
