@@ -117,4 +117,6 @@ Standard LTC confirm: 40+0.4s.
 
 | 62 | 2026-06-16 | probcut (depth≥5, SEE-filtered capture vs β+180 at depth−4) | v0.11.0 → probcut | [0, 10] | 8+0.08 | 122-663-119 | −0.20 | **NEUTRAL +1.2 (50.2%)** | 904 games. Conservative probcut (margin 180, SEE-gated) fires rarely/safely → ~0. Not kept. **4th cheap/standard search result post-conthist all neutral/neg (2-ply 0, razoring −6, improving −7, probcut +1) → cheap+standard search EXHAUSTED.** Banked wins (log-LMR/singular/IIR/conthist) are the vein. Next: proper SPSA (expose singular margin) or compute-heavy eval. HEAD = v0.11.0. |
 
+| 63 | 2026-06-16 | proper SPSA (6 params, decayed lr+c, 12g/iter) | v0.11.0 params | n/a (tune) | 8+0.08 | — | — | **NEAR-OPTIMAL, not banked** | Stopped at iter 92/800 (~9hr projected). All params drifted only ±5% from defaults (lmrbase 75→76, lmrdiv 225→230, rfpmargin 80→81, futbase 80→77, futscale 120→115, semargin 200→214), R hovering ~0 → search params are near-optimal; drift is noise-level, not worth validating. **Confirms search-param tuning is tapped** (consistent with the earlier −9). Singular margin (the untuned one) also barely moved (200→214) → 2·depth is ~right. → search axis fully tapped; only big lever left = compute-heavy from-scratch eval relabel (~days). |
+
 <!-- Append rows below as tests complete. Never delete rows. -->

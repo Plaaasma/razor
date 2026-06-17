@@ -5,6 +5,17 @@
 ---
 ## ★ SESSION HANDOVER (2026-06-14) — READ THIS FIRST ★
 
+**★★ SESSION 4 CONSOLIDATED STATUS (2026-06-16) — CURRENT TRUTH, read first ★★**
+**HEAD = v0.11.0 (tag, bench 20008)** = v0.7.0 net + i32 + log-LMR + singular + IIR + conthist. Clean, all committed.
+This session shipped **v0.11.0 (continuation history +7.3, row 53)**, then exhaustively mapped BOTH mission axes:
+- **EVAL axis CAPPED.** Net teacher-limited at public test80 label quality. Architecture exhausted (width/king-buckets/data-quantity/2-layer-depth all neutral or fail, rows 51-52). Stronger teacher is the only real eval lever (+16 at matched scale, A/B 50k>8k labels r56) but NOT cheaply bankable: from-scratch 2M = −500 (scale r57); fine-tune razorsf on Razor-pos −233 (r58), on PUBLIC-pos −82 (r59 — SF18-label shape de-optimizes a net trained on test80 labels). Only path to the +16 = train FROM SCRATCH on ~razorsf-scale (tens of M positions) @ 50k = DAYS of labeling (SF18 ~9 Mnps aggregate under 24-way load, bandwidth-bound).
+- **SEARCH axis TAPPED.** Big wins banked (log-LMR/singular/IIR/conthist). Everything post-conthist neutral/neg: 2-ply conthist 0 (r54), razoring −6 (r55), improving heuristic −7 (r61), probcut +1 (r62). Proper SPSA (6 params incl. the untuned singular margin): all near-optimal, ±5% drift, R≈0 (r63).
+**→ MISSION AT TRACTABLE CEILING. Reaching −50 of SF18 likely needs a REGIME CHANGE, not incremental work:** a stronger teacher than the SF18 pin (relabel/datagen with a >SF18 source), and/or multi-thread SMP IF the M1/ladder permits threads (currently 1-thread STC → SMP gives no ladder Elo), and/or a bigger-but-fast net arch. Remaining tractable bets, prioritized:
+  1. **Compute-heavy from-scratch eval relabel** (~days, only validated path to +16): `razor_dump_fens.exe` (public→FEN, built) → `label_sf.py` @ 50k on tens-of-M → train `razor_net_dg.rs` from scratch → SPRT vs v0.11.0. Days of compute for a modest, uncertain (scale) +16 — worth confirming before committing.
+  2. **M1 re-check** (vs-SF%) — deferred since v0.9.0 (4.75%); ~+30 cumulative since (conthist), re-measure.
+  3. Lazy SMP — only if threads count for M1.
+All tooling built + reusable: label_sf.py (incremental SF18 relabeler), razor_dump_fens.exe, razor_net_dg.rs (from-scratch, env DG_BIN/DG_ID), razor_net_ft.rs (fine-tune), ab_label.ps1, spsa.py (decay+semargin). semargin is now a UCI tunable (default 200 = old behavior).
+
 **★ MISSION (2026-06-16, user): full autonomous until Razor within 50 Elo of SF18.** Currently ~−515 → need ~+465. Search tweaks (+10-35) can't get there alone; the bulk must come from EVAL/net. Campaign: keep mining search for drops + drive the net axis hard (depth, then stronger-teacher data). Every change SPRT-gated, HEAD always verified, journal each result, re-check vs-SF gap per ~+50 cumulative.
 
 **★ HEAD = v0.11.0 (tag) = v0.10.0 + continuation history. bench = 20008.** Verify `target\release\razor.exe bench` → 20008. conthist +7.3 (row 53). Net-architecture axis EXHAUSTED (width/buckets/data-quantity/depth all tapped — teacher-limited at 768). Search axis productive again via conthist (move-ordering). Banked search wins: log-LMR +9.5, singular +35, IIR +16, conthist +7. Archives masters\razor-v0.8.0…v0.11.0.exe. Post-conthist cheap search tapped again (2-ply conthist neutral row 54, razoring −6 row 55).
