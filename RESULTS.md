@@ -123,4 +123,6 @@ Standard LTC confirm: 40+0.4s.
 
 | 65 | 2026-06-16 | **lazy SMP (8 threads)** vs v0.11.0 (1 thread), same hash/TC | v0.11.0 → SMP | [0, 10] | 8+0.08 conc2 | 35-82-3 | +0.9→ | **+95±35 (63%) → v0.12.0** | 120 games, W35-L3-D82, LLR climbing (+117 early). Lockless TT + `search_threaded` (N searchers sharing TT, scoped threads, shared atomic stop). 8T ≈ +95-117 Elo over 1T at STC — bigger at LTC. 1-thread play identical (bench 20008, perft exact) so SPRT ladder unaffected; validated via 8T-vs-1T self-play (SMP can't be tested on the 1T ladder). **★ The M1 lever: official M1 is 8-thread; single-threaded Razor was crippled there. Now multi-threaded.** New base **v0.12.0**. Next: M1 8T-vs-8T vs SF18 (re-measure gap); add helper diversity for more SMP Elo. |
 
+| 66 | 2026-06-16 | M1 (8T-vs-8T): v0.12.0 vs SF18, STC proxy UHO | — | n/a | 8+0.08 8T conc2 | 0-54-246 | — | **9.00% / −402±41** | 300 games. Up from 1T-vs-1T 6.81% (row 64) → SMP scales Razor's relative % up (8T helpers help more than the shared TT cost). **~1% under M1's ≥10% bar (upper CI ~10.6%).** 0 wins (all score from 54 draws, expected vs SF18). **SMP nearly reached M1.** Next: helper diversity (depth/move-order variation) for more 8T SMP → cross 10%; or longer/LTC M1 (SMP scales with TC). |
+
 <!-- Append rows below as tests complete. Never delete rows. -->
