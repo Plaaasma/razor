@@ -73,6 +73,9 @@ pub struct Searcher<'a> {
     /// searches); MOVE_NONE normally. Per-ply to avoid threading a param through
     /// every negamax call site.
     excluded: [Move; MAX_PLY],
+    /// SMP helper id (0 = main thread). Helpers with odd id search a touch wider
+    /// (reduce one less in LMR) so the shared TT collects diverse trees.
+    helper_id: usize,
 }
 
 impl<'a> Searcher<'a> {
@@ -99,6 +102,7 @@ impl<'a> Searcher<'a> {
             prev_pt: [6; MAX_PLY],
             prev_to: [0; MAX_PLY],
             excluded: [MOVE_NONE; MAX_PLY],
+            helper_id: 0,
         }
     }
 
@@ -417,6 +421,10 @@ impl<'a> Searcher<'a> {
                     let d = (depth as usize).min(63);
                     let mc = (move_count as usize).min(63);
                     r = lmr_table()[d][mc];
+                    // SMP diversity: odd helpers reduce one less (search wider) so
+                    // the shared TT collects varied trees. No effect on the main
+                    // thread (id 0) → single-thread play unchanged.
+                    r = r.saturating_sub((self.helper_id & 1) as u32);
                     // keep at least depth 1 after reduction
                     r = r.min(new_depth.saturating_sub(1));
                 }
@@ -629,11 +637,13 @@ pub fn search_threaded(
         s.silent = silent;
         return s.go(pos, limits, history);
     }
+    let stop_ref = &stop;
     std::thread::scope(|scope| {
-        for _ in 1..n {
-            scope.spawn(|| {
-                let mut s = Searcher::new(tt, &stop);
+        for i in 1..n {
+            scope.spawn(move || {
+                let mut s = Searcher::new(tt, stop_ref);
                 s.silent = true;
+                s.helper_id = i;
                 let mut hl = Limits::infinite();
                 hl.depth = Some(MAX_PLY as u32 - 1);
                 s.go(pos, &hl, history);
