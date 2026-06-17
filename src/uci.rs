@@ -158,7 +158,7 @@ impl Uci {
         limits.time = if self.pos.stm == Color::White { wtime } else { btime };
         limits.inc = if self.pos.stm == Color::White { winc } else { binc };
 
-        let mut searcher = Searcher::new(&mut self.tt);
+        let mut searcher = Searcher::new(&self.tt);
         let best = searcher.go(&self.pos, &limits, &self.history);
         crate::send!("bestmove {best}");
     }

@@ -35,7 +35,7 @@ pub const MAX_PLY: usize = 128;
 
 pub struct Searcher<'a> {
     pub nodes: u64,
-    tt: &'a mut Tt,
+    tt: &'a Tt,
     start: Instant,
     soft_limit_ms: u64,
     hard_limit_ms: u64,
@@ -72,7 +72,7 @@ pub struct Searcher<'a> {
 }
 
 impl<'a> Searcher<'a> {
-    pub fn new(tt: &'a mut Tt) -> Searcher<'a> {
+    pub fn new(tt: &'a Tt) -> Searcher<'a> {
         Searcher {
             nodes: 0,
             tt,

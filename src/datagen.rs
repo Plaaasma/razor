@@ -51,14 +51,14 @@ pub fn run(out_path: &str, target: usize, seed: u64) -> std::io::Result<(usize, 
     let mut w = BufWriter::new(file);
     let mut rng = Rng(seed ^ 0xda7a_9e0e_da7a_9e0e);
 
-    let mut tt = Tt::new(16);
+    let tt = Tt::new(16);
     let mut written = 0usize;
     let mut games = 0usize;
     let start = std::time::Instant::now();
 
     while written < target {
         tt.clear();
-        let (samples, white_points) = play_game(&mut tt, &mut rng);
+        let (samples, white_points) = play_game(&tt, &mut rng);
         games += 1;
 
         for s in &samples {
@@ -83,7 +83,7 @@ pub fn run(out_path: &str, target: usize, seed: u64) -> std::io::Result<(usize, 
 
 /// Play one self-play game. Returns (filtered samples, white game points in
 /// {1.0, 0.5, 0.0}).
-fn play_game(tt: &mut Tt, rng: &mut Rng) -> (Vec<Sample>, f64) {
+fn play_game(tt: &Tt, rng: &mut Rng) -> (Vec<Sample>, f64) {
     let mut pos = Position::startpos();
     let mut history: Vec<u64> = Vec::new();
     let mut samples: Vec<Sample> = Vec::new();
