@@ -129,4 +129,6 @@ Standard LTC confirm: 40+0.4s.
 
 | 68 | 2026-06-17 | SMP helper diversity (odd helpers reduce 1 less in LMR) vs v0.12.0, both 8T | v0.12.0 → smpdiv | [0, 10] | 8+0.08 8T conc2 | 52-309-39 | +0.4 | **KEPT +11±15 (51.6%) → v0.12.1** | 400 games. Odd-id helpers search wider → diverse trees in the shared TT. Real-leaning small 8T gain (peaked +35 early, settled +11; CI ~[−4,26]). 1-thread play identical (bench 20008, perft exact) → zero ladder risk; operator-keep for the 8T M1 use-case. On top of base SMP +95-117 → Razor's 8T strength ~+106-128 over 1T. New base v0.12.1. |
 
+| 69 | 2026-06-17 | **★ M1 CONFIRMED (LTC, 500g): v0.12.1 8T vs SF18 ★** | — | n/a | 40+0.4 8T conc2 | 0-128-372 | — | **★ 12.80% / −333±24 — M1 PASSED ★** | 500 games. CI lower bound ~10.4% **> the ≥10% M1 bar** → M1 milestone confidently confirmed (vs v0.12.0 borderline 10.6% row 67). 26% draw rate, 0 wins. **Gap −333 (was −454 1T session start, −370 v0.12.0). SMP (+95-117) + diversity (+11) = the M1 achiever.** Brief §7 defining milestone MET. Next (within-50 = −50, still far): regime change — stronger-than-SF18 teacher / bigger-fast net / more SMP scaling. |
+
 <!-- Append rows below as tests complete. Never delete rows. -->
