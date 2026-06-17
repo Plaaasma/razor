@@ -139,4 +139,8 @@ Standard LTC confirm: 40+0.4s.
 
 | 73 | 2026-06-17 | adaptive NMP reduction (R = 3 + depth/4) | v0.12.2 → nmp | [0, 10] | 8+0.08 1T | 152-662-94 | +2.95 | **PASS +22.2±11 → v0.12.3** | 908 games (53.19%), **H1 ACCEPTED**. NMP was fixed R=3; depth-scaled reduction (R=3+depth/4) deepens cuts at high depth → +22, biggest search win since singular. bench 19963, perft exact. New base v0.12.3. Next: eval-based NMP R term (+min((eval−beta)/200,3)). |
 
+| 74 | 2026-06-17 | NMP eval-term (R += min((eval−beta)/200,3)) | v0.12.3 → nmpeval | [0, 10] | 8+0.08 1T | 112-679-107 | −0.07 | **NEUTRAL +1.9 (50.3%)** | 898 games. On top of depth-based adaptive NMP (v0.12.3), the eval-margin term adds ~nothing. Depth-scaling was the NMP win; eval-term doesn't. Not kept. HEAD = v0.12.3. |
+
+| 75 | 2026-06-17 | gentle LMP (skip quiets past 4+depth² at depth≤6) | v0.12.3 → lmp2 | [0, 10] | 8+0.08 1T | 45-305-100 | −2.98 | **REJECTED −42.7 (H0)** | 450 games. Better than prior LMP −96 (row 45) but still strongly negative; bench cut −44% = over-prunes. **2nd LMP failure → LMP doesn't fit Razor** (eval/ordering not sharp enough for count-based quiet pruning; futility covers the safe eval-based part). ★ Pattern: PRUNING fails for Razor (LMP×2, razoring −6, probcut ~0, caphist −9), REDUCTIONS win (NMP +22, TM +9, LMR, IIR, singular). HEAD = v0.12.3. |
+
 <!-- Append rows below as tests complete. Never delete rows. -->
