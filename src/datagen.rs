@@ -121,7 +121,8 @@ fn play_game(tt: &Tt, rng: &mut Rng) -> (Vec<Sample>, f64) {
             break;
         }
 
-        let mut s = Searcher::new(tt);
+        let stop = std::sync::atomic::AtomicBool::new(false);
+        let mut s = Searcher::new(tt, &stop);
         s.silent = true;
         let mut limits = Limits::infinite();
         limits.nodes = Some(NODES_PER_MOVE);

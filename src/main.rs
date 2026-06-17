@@ -80,7 +80,8 @@ fn main() {
             for fen in BENCH_FENS {
                 let pos = Position::from_fen(fen).unwrap();
                 let tt = tt::Tt::new(16);
-                let mut s = search::Searcher::new(&tt);
+                let stop = std::sync::atomic::AtomicBool::new(false);
+                let mut s = search::Searcher::new(&tt, &stop);
                 let mut limits = search::Limits::infinite();
                 limits.depth = Some(BENCH_DEPTH);
                 s.go(&pos, &limits, &[]);

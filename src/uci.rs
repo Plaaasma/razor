@@ -14,11 +14,12 @@ pub struct Uci {
     history: Vec<u64>,
     tt: Tt,
     move_overhead: u64,
+    threads: usize,
 }
 
 impl Uci {
     pub fn new() -> Uci {
-        Uci { pos: Position::startpos(), history: Vec::new(), tt: Tt::new(16), move_overhead: 0 }
+        Uci { pos: Position::startpos(), history: Vec::new(), tt: Tt::new(16), move_overhead: 0, threads: 1 }
     }
 
     pub fn run(&mut self) {
@@ -72,6 +73,10 @@ impl Uci {
                         } else if name == "moveoverhead" {
                             if let Ok(ms) = value.parse::<u64>() {
                                 self.move_overhead = ms.min(1000);
+                            }
+                        } else if name == "threads" {
+                            if let Ok(t) = value.parse::<usize>() {
+                                self.threads = t.clamp(1, 32);
                             }
                         } else if name == "usennue" {
                             let on = value.eq_ignore_ascii_case("true");
@@ -158,8 +163,8 @@ impl Uci {
         limits.time = if self.pos.stm == Color::White { wtime } else { btime };
         limits.inc = if self.pos.stm == Color::White { winc } else { binc };
 
-        let mut searcher = Searcher::new(&self.tt);
-        let best = searcher.go(&self.pos, &limits, &self.history);
+        let best =
+            crate::search::search_threaded(&self.tt, self.threads, &self.pos, &limits, &self.history, false);
         crate::send!("bestmove {best}");
     }
 }

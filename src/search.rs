@@ -8,6 +8,7 @@ use crate::position::Position;
 use crate::tt::{BOUND_EXACT, BOUND_LOWER, BOUND_UPPER, Tt, score_from_tt, score_to_tt};
 use crate::types::{MOVE_NONE, Move, PieceType};
 use std::sync::OnceLock;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
 pub struct Limits {
@@ -42,6 +43,9 @@ pub struct Searcher<'a> {
     node_limit: u64,
     max_depth: u32,
     stopped: bool,
+    /// shared across SMP threads: any thread that hits its limit sets it, all
+    /// threads observe it in check_limits and stop. Single-thread: a private one.
+    shared_stop: &'a AtomicBool,
     /// zobrist keys of the positions preceding the node being visited
     keys: Vec<u64>,
     best_root: Move,
@@ -72,10 +76,11 @@ pub struct Searcher<'a> {
 }
 
 impl<'a> Searcher<'a> {
-    pub fn new(tt: &'a Tt) -> Searcher<'a> {
+    pub fn new(tt: &'a Tt, shared_stop: &'a AtomicBool) -> Searcher<'a> {
         Searcher {
             nodes: 0,
             tt,
+            shared_stop,
             start: Instant::now(),
             soft_limit_ms: u64::MAX,
             hard_limit_ms: u64::MAX,
@@ -185,11 +190,18 @@ impl<'a> Searcher<'a> {
     }
 
     fn check_limits(&mut self) {
+        // another SMP thread already decided to stop
+        if self.shared_stop.load(Ordering::Relaxed) {
+            self.stopped = true;
+            return;
+        }
         if self.nodes >= self.node_limit {
             self.stopped = true;
+            self.shared_stop.store(true, Ordering::Relaxed);
         }
         if self.nodes % 2048 == 0 && self.start.elapsed().as_millis() as u64 >= self.hard_limit_ms {
             self.stopped = true;
+            self.shared_stop.store(true, Ordering::Relaxed);
         }
     }
 
@@ -595,6 +607,44 @@ impl<'a> Searcher<'a> {
             scores[j] = sc;
         }
     }
+}
+
+/// Lazy SMP: run `threads` searchers sharing the lockless TT. The main thread
+/// drives time control + reporting; helpers search to no limit until the shared
+/// stop flips, seeding the TT so the main search goes deeper. Returns the main
+/// thread's move. The M1 benchmark runs 8 threads — a 1-thread Razor is crippled
+/// there, so this is the biggest M1 lever. Honors the UCI `Threads` option.
+pub fn search_threaded(
+    tt: &Tt,
+    threads: usize,
+    pos: &Position,
+    limits: &Limits,
+    history: &[u64],
+    silent: bool,
+) -> Move {
+    let n = threads.max(1);
+    let stop = AtomicBool::new(false);
+    if n == 1 {
+        let mut s = Searcher::new(tt, &stop);
+        s.silent = silent;
+        return s.go(pos, limits, history);
+    }
+    std::thread::scope(|scope| {
+        for _ in 1..n {
+            scope.spawn(|| {
+                let mut s = Searcher::new(tt, &stop);
+                s.silent = true;
+                let mut hl = Limits::infinite();
+                hl.depth = Some(MAX_PLY as u32 - 1);
+                s.go(pos, &hl, history);
+            });
+        }
+        let mut main = Searcher::new(tt, &stop);
+        main.silent = silent;
+        let best = main.go(pos, limits, history);
+        stop.store(true, Ordering::Relaxed); // time up → release helpers
+        best
+    })
 }
 
 /// Late-move-reduction amounts indexed by [depth][move_count], capped at 63.
