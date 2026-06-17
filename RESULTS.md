@@ -119,4 +119,6 @@ Standard LTC confirm: 40+0.4s.
 
 | 63 | 2026-06-16 | proper SPSA (6 params, decayed lr+c, 12g/iter) | v0.11.0 params | n/a (tune) | 8+0.08 | — | — | **NEAR-OPTIMAL, not banked** | Stopped at iter 92/800 (~9hr projected). All params drifted only ±5% from defaults (lmrbase 75→76, lmrdiv 225→230, rfpmargin 80→81, futbase 80→77, futscale 120→115, semargin 200→214), R hovering ~0 → search params are near-optimal; drift is noise-level, not worth validating. **Confirms search-param tuning is tapped** (consistent with the earlier −9). Singular margin (the untuned one) also barely moved (200→214) → 2·depth is ~right. → search axis fully tapped; only big lever left = compute-heavy from-scratch eval relabel (~days). |
 
+| 64 | 2026-06-16 | M1 re-check: v0.11.0 vs SF18 (STC proxy, 1T) | — | n/a | 8+0.08 1T | 1-107-692 | — | **6.81% / −454±30** | 800 games vs SF18. Up from v0.9.0's 4.75%/−520 (+66 Elo from IIR+conthist; noisy ±30). **★ KEY: official M1 (vs_stockfish.ps1) is 8-THREAD, but Razor is SINGLE-THREADED → in M1 it's 1-thread Razor vs 8-thread SF18 (crippled). LAZY SMP is the biggest untapped M1 lever (1→8 threads ≈ +100-150 Elo at M1 conditions — could pass M1's 10% alone).** Next: implement lazy SMP (needs lockless/shared TT). |
+
 <!-- Append rows below as tests complete. Never delete rows. -->
