@@ -133,4 +133,8 @@ Standard LTC confirm: 40+0.4s.
 
 | 70 | 2026-06-17 | stability-based time management | v0.12.1 → tm | [0, 10] | 8+0.08 1T | 332-1854-266 | +2.99 | **PASS +9.35±6.5 → v0.12.2** | 2452 games (51.35%), **H1 ACCEPTED** (formal [0,10] pass). Best-root-move stability scales the soft limit (TM_FACTOR 135%→73%: stop sooner when stable, search longer when changing; hard cap unchanged). Real 1T gain (affects ladder + M1). bench 20008 (TM inactive in depth/movetime modes), perft exact. Razor's TM was crude `t/25+inc/2` — first TM improvement. New base v0.12.2. |
 
+| 71 | 2026-06-17 | capture history (refine MVV-LVA) | v0.12.2 → caphist | [0, 10] | 8+0.08 1T | 121-634-145 | −1.65 | **REJECTED −9.3 (48.7%)** | 900 games. cap_hist[att][to][vic] added to capture ordering disrupts MVV-LVA (which + the qsearch SEE-prune already order captures well) → −9. Not kept. HEAD = v0.12.2. |
+
+| 72 | 2026-06-17 | score-based TM extension (think longer on score drop) | v0.12.2 → scoretm | [0, 10] | 8+0.08 1T | 206-1172-224 | killed −0.x | **REJECTED −3.9 (49.4%)** | 1602 games. Extending soft limit ×1.3 on a ≥30cp root-score drop over-spends time → −4. Stability TM (row 70, kept) was the TM win; this extension doesn't add. Not kept. HEAD = v0.12.2. |
+
 <!-- Append rows below as tests complete. Never delete rows. -->
