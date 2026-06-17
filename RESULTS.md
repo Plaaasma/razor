@@ -125,4 +125,6 @@ Standard LTC confirm: 40+0.4s.
 
 | 66 | 2026-06-16 | M1 (8T-vs-8T): v0.12.0 vs SF18, STC proxy UHO | — | n/a | 8+0.08 8T conc2 | 0-54-246 | — | **9.00% / −402±41** | 300 games. Up from 1T-vs-1T 6.81% (row 64) → SMP scales Razor's relative % up (8T helpers help more than the shared TT cost). **~1% under M1's ≥10% bar (upper CI ~10.6%).** 0 wins (all score from 54 draws, expected vs SF18). **SMP nearly reached M1.** Next: helper diversity (depth/move-order variation) for more 8T SMP → cross 10%; or longer/LTC M1 (SMP scales with TC). |
 
+| 67 | 2026-06-17 | **M1 LTC (8T-vs-8T): v0.12.0 vs SF18, 40+0.4** | — | n/a | 40+0.4 8T conc2 | 0-51-189 | — | **★ 10.62% / −370±41 — M1 ~MET ★** | 240 games (final ~250). Central ABOVE the ≥10% M1 bar (vs STC-8T 9.00% row 66, STC-1T 6.81% row 64) — LTC + draw-rate + SMP scaling lift it over. CI ±~3.5% so consistent-with-M1, not statistically nailed (a full 500-pair run would confirm). **★ M1 milestone reached at central estimate — lazy SMP (v0.12.0) carried Razor ~5%→10.6% vs SF18 this session.** 0 wins (all from draws, ~21% draw rate). Next to nail it confidently: helper diversity (more 8T SMP) + a larger confirmation run. |
+
 <!-- Append rows below as tests complete. Never delete rows. -->
