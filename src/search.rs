@@ -309,7 +309,13 @@ impl<'a> Searcher<'a> {
         // internal iterative reduction: with no TT move at a decent depth the
         // move ordering is poor, so search one ply shallower (cheaper; the
         // shallow result fills the TT and the next iteration re-searches well).
-        let depth = if depth >= 4 && tt_mv == MOVE_NONE && excluded == MOVE_NONE {
+        // Also fires when a TT move exists but its entry is much shallower than
+        // the current depth (tt_depth + 4 <= depth): a stale shallow move orders
+        // little better than none, so reduce there too.
+        let depth = if depth >= 4
+            && excluded == MOVE_NONE
+            && (tt_mv == MOVE_NONE || tt_depth + 4 <= depth)
+        {
             depth - 1
         } else {
             depth

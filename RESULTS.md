@@ -143,4 +143,6 @@ Standard LTC confirm: 40+0.4s.
 
 | 75 | 2026-06-17 | gentle LMP (skip quiets past 4+depth² at depth≤6) | v0.12.3 → lmp2 | [0, 10] | 8+0.08 1T | 45-305-100 | −2.98 | **REJECTED −42.7 (H0)** | 450 games. Better than prior LMP −96 (row 45) but still strongly negative; bench cut −44% = over-prunes. **2nd LMP failure → LMP doesn't fit Razor** (eval/ordering not sharp enough for count-based quiet pruning; futility covers the safe eval-based part). ★ Pattern: PRUNING fails for Razor (LMP×2, razoring −6, probcut ~0, caphist −9), REDUCTIONS win (NMP +22, TM +9, LMR, IIR, singular). HEAD = v0.12.3. |
 
+| 76 | 2026-06-17 | LMR for captures (reduce late captures 1 less) | v0.12.3 → lmrcap | [0, 10] | 8+0.08 1T | 117-753-128 | −0.98 | **REJECTED −3.8 (49.5%)** | 998 games. Reducing forcing captures misses tactics (re-search doesn't fully recover) → −4. Not kept. HEAD = v0.12.3. Reduction vein thinning post-NMP (NMP-eval ~0, LMR-cap −4). |
+
 <!-- Append rows below as tests complete. Never delete rows. -->
