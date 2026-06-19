@@ -56,9 +56,13 @@ pub fn run(out_path: &str, target: usize, seed: u64) -> std::io::Result<(usize, 
     let mut games = 0usize;
     let start = std::time::Instant::now();
 
+    // nodes/move for the labeling search; override with DG_NODES (default 5000).
+    // Higher = stronger labels (slower datagen).
+    let nodes = std::env::var("DG_NODES").ok().and_then(|s| s.parse().ok()).unwrap_or(NODES_PER_MOVE);
+
     while written < target {
         tt.clear();
-        let (samples, white_points) = play_game(&tt, &mut rng);
+        let (samples, white_points) = play_game(&tt, &mut rng, nodes);
         games += 1;
 
         for s in &samples {
@@ -83,7 +87,7 @@ pub fn run(out_path: &str, target: usize, seed: u64) -> std::io::Result<(usize, 
 
 /// Play one self-play game. Returns (filtered samples, white game points in
 /// {1.0, 0.5, 0.0}).
-fn play_game(tt: &Tt, rng: &mut Rng) -> (Vec<Sample>, f64) {
+fn play_game(tt: &Tt, rng: &mut Rng, nodes: u64) -> (Vec<Sample>, f64) {
     let mut pos = Position::startpos();
     let mut history: Vec<u64> = Vec::new();
     let mut samples: Vec<Sample> = Vec::new();
@@ -125,7 +129,7 @@ fn play_game(tt: &Tt, rng: &mut Rng) -> (Vec<Sample>, f64) {
         let mut s = Searcher::new(tt, &stop);
         s.silent = true;
         let mut limits = Limits::infinite();
-        limits.nodes = Some(NODES_PER_MOVE);
+        limits.nodes = Some(nodes);
         let best = s.go(&pos, &limits, &history);
         let score = s.root_score; // stm-relative cp
 
