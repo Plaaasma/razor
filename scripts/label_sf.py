@@ -63,6 +63,9 @@ def label_shard(args):
                 score_cp = 30000 - abs(mate) if mate > 0 else -(30000 - abs(mate))
             if score_cp is None:
                 continue
+            # clamp to match razorsf's binpack loader (|score|<=10000); unclamped
+            # mate values (~29994) saturate sigmoid targets and distort the net.
+            score_cp = max(-10000, min(10000, score_cp))
             white_cp = score_cp if stm_is_white(fen) else -score_cp
             fout.write(f"{fen} | {white_cp} | {result}\n")
             done += 1
