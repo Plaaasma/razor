@@ -40,22 +40,34 @@ fn rd_i16(bytes: &[u8], at: &mut usize) -> i16 {
 }
 
 fn load() -> Network {
+    // Runtime net override for the multigen datagen loop / rented farm: if
+    // RAZOR_NET names a readable file, use it; otherwise the embedded net. Lets
+    // each generation datagen with its new net without recompiling. When unset,
+    // behaviour (and bench) is identical to the embedded build.
+    let owned;
+    let bytes: &[u8] = match std::env::var("RAZOR_NET").ok().and_then(|p| std::fs::read(p).ok()) {
+        Some(b) => {
+            owned = b;
+            &owned
+        }
+        None => NET_BYTES,
+    };
     let mut at = 0usize;
     let mut feature_weights = Box::new([[0i16; HIDDEN]; 768]);
     for col in feature_weights.iter_mut() {
         for w in col.iter_mut() {
-            *w = rd_i16(NET_BYTES, &mut at);
+            *w = rd_i16(bytes, &mut at);
         }
     }
     let mut feature_bias = [0i16; HIDDEN];
     for b in feature_bias.iter_mut() {
-        *b = rd_i16(NET_BYTES, &mut at);
+        *b = rd_i16(bytes, &mut at);
     }
     let mut output_weights = [0i16; 2 * HIDDEN];
     for w in output_weights.iter_mut() {
-        *w = rd_i16(NET_BYTES, &mut at);
+        *w = rd_i16(bytes, &mut at);
     }
-    let output_bias = rd_i16(NET_BYTES, &mut at);
+    let output_bias = rd_i16(bytes, &mut at);
     Network { feature_weights, feature_bias, output_weights, output_bias }
 }
 
