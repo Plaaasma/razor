@@ -24,11 +24,20 @@ echo "== building razor =="
 RUSTFLAGS="-C target-cpu=native" cargo build --release
 
 if [ -z "${RAZOR_SF:-}" ]; then
-  echo "== fetching teacher (Stockfish avx2) =="
-  curl -fsSL https://github.com/official-stockfish/Stockfish/releases/latest/download/stockfish-ubuntu-x86-64-avx2.tar -o sf.tar
-  tar xf sf.tar
-  RAZOR_SF="$(pwd)/stockfish/stockfish-ubuntu-x86-64-avx2"
-  chmod +x "$RAZOR_SF"
+  ARCH=$(uname -m)
+  if [ "$ARCH" = "x86_64" ]; then
+    echo "== fetching teacher (Stockfish x86-64-avx2) =="
+    curl -fsSL https://github.com/official-stockfish/Stockfish/releases/latest/download/stockfish-ubuntu-x86-64-avx2.tar -o sf.tar
+    tar xf sf.tar
+    RAZOR_SF="$(pwd)/stockfish/stockfish-ubuntu-x86-64-avx2"
+    chmod +x "$RAZOR_SF"
+  else
+    # aarch64 (Spark / ARM rentals): build Stockfish from source (fast).
+    echo "== building teacher (Stockfish armv8) from source =="
+    rm -rf Stockfish && git clone --depth 1 https://github.com/official-stockfish/Stockfish.git
+    ( cd Stockfish/src && make -j"$NPROC" build ARCH=armv8 >/dev/null 2>&1 )
+    RAZOR_SF="$(pwd)/Stockfish/src/stockfish"
+  fi
 fi
 export RAZOR_SF
 echo "teacher: $RAZOR_SF"
