@@ -32,10 +32,12 @@ if [ -z "${RAZOR_SF:-}" ]; then
     RAZOR_SF="$(pwd)/stockfish/stockfish-ubuntu-x86-64-avx2"
     chmod +x "$RAZOR_SF"
   else
-    # aarch64 (Spark / ARM rentals): build Stockfish from source (fast).
-    echo "== building teacher (Stockfish armv8) from source =="
+    # aarch64 (Spark / ARM rentals / Apple Silicon): build Stockfish from source.
+    SFARCH=armv8
+    [ "$(uname -s)" = "Darwin" ] && SFARCH=apple-silicon
+    echo "== building teacher (Stockfish $SFARCH) from source =="
     rm -rf Stockfish && git clone --depth 1 https://github.com/official-stockfish/Stockfish.git
-    ( cd Stockfish/src && make -j"$NPROC" build ARCH=armv8 >/dev/null 2>&1 )
+    ( cd Stockfish/src && make -j"$NPROC" build ARCH=$SFARCH >/dev/null 2>&1 )
     RAZOR_SF="$(pwd)/Stockfish/src/stockfish"
   fi
 fi
