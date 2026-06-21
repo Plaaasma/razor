@@ -3,7 +3,15 @@
 > Journal per project brief (`H:\RazorBot\aggressive_engine_prompt.md`). Re-read brief at session start. Update this file every session.
 
 ---
-## ★★★★★★★★ EVAL CAP ROOT-CAUSED (2026-06-21, row 95) — DECISION POINT ★★★★★★★★
+## ★★★★★★★★★ EVAL WALL BROKEN — THREAT INPUTS WORK (2026-06-21, row 96) ★★★★★★★★★
+
+**Threat inputs v1 = +79.8 Elo at EQUAL NODES vs v0.12.6, H1 accepted (61.3%, 350g).** FIRST Razor-trainable net to beat razorsf — breaks the dozen-deep "eval capped" wall. CONFIRMS the input-features thesis (rows 94/95): the cap was plain-768's feature set, not capacity/data/recipe. Threats (victim-centric: att_pt,vic_pt,enemy,vic_sq → 3200 feat, total 3968) add eval signal the plain net structurally can't represent. Recovers ~26% of the +308 SF gap (1/4, as the design workflow predicted).
+- BUILT: bullet inputs/threats.rs (ThreatInputs) + razor_net_thr.rs + threat_parity.rs; Razor candidates/nnue-thr.rs (recompute-per-node, i32 scratch). PARITY-GATED (byte-identical engine vs trainer, 4 FENs incl black-to-move). Symmetric (+Q 1842==mirror). Net checkpoints_razorthr/razorthr-80.
+- CAVEAT: recompute-per-node → nps 503k (6x slower) → NOT shippable at equal TIME yet (eqtime match running). 
+- PATH TO WITHIN-50 (now real, climbing): (a) SCALE EVAL — v1.1 threats+output-buckets, v1.2 +king-buckets, V2 +attacker-square FullThreats(~67k Reckless scheme)+more data, each eqnodes-tested, stack toward +308; (b) SPEED — incremental threat accumulator (Plenty/Reckless DirtyThreat) + SIMD to restore nps so the eqnodes Elo ships. Eval Elo is the mission metric (uncertain → maximize first); speed is known-pattern engineering (do once eval stack established).
+- prior "within-50 needs SF-scale campaign / disk-blocked / uncertain" assessment SUPERSEDED: the lever (threats) works at the CURRENT 2.2B scale.
+
+## ★★★★★★★★ EVAL CAP ROOT-CAUSED (2026-06-21, row 95) — SUPERSEDED by row 96 (threats broke it) ★★★★★★★★
 
 Big-net2 (1024 + 16 mirrored king-buckets + 8 ob) with the FULL multi-engine-survey recipe (power_error 2.5, beta1 0.95, **6 months test80 / 1.09B positions**, weight decay) = **−97 Elo equal-nodes** vs v0.12.6 (row 95). This REFINES row 94: the lever is **NOT "training recipe"** (better recipe + 3× data on the same arch family still −97). The cap is **INPUT FEATURES + DATA SCALE**:
 - Every Razor-trainable net (plain-768, 1024, 16-king-bucket) fits test80 to loss ~0.046 and caps ~3290. A dozen failures: capacity (r82 −70), buckets (r88 ~0), depth (r52 −210), from-scratch distill (r83 −862 / r84 / r90 −511), fine-tune (r59/r85 −43), self-play (r87 −221 / r89 −381), and now survey-recipe big-net (r95 −97).
