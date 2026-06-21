@@ -535,6 +535,22 @@ impl<'a> Searcher<'a> {
             return self.eval(pos, ply);
         }
 
+        // TT probe: qsearch cutoff (depth 0, so any matching bound applies) and a
+        // TT move to order first. Cutoffs only at non-root.
+        let mut tt_mv = MOVE_NONE;
+        if let Some(e) = self.tt.probe(pos.key) {
+            tt_mv = Move(e.mv);
+            if ply > 0 {
+                let s = score_from_tt(e.score as Score, ply);
+                match e.bound {
+                    BOUND_EXACT => return s,
+                    BOUND_LOWER if s >= beta => return s,
+                    BOUND_UPPER if s <= alpha => return s,
+                    _ => {}
+                }
+            }
+        }
+
         let in_check = pos.in_check();
         let mut best;
         if in_check {
@@ -558,7 +574,7 @@ impl<'a> Searcher<'a> {
         } else {
             crate::movegen::generate_captures(pos, &mut list);
         }
-        self.order_moves(pos, &mut list, MOVE_NONE, ply);
+        self.order_moves(pos, &mut list, tt_mv, ply);
 
         for mv in list.iter() {
             // prune captures that lose material by SEE (not while in check —
