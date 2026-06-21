@@ -3,6 +3,18 @@
 > Journal per project brief (`H:\RazorBot\aggressive_engine_prompt.md`). Re-read brief at session start. Update this file every session.
 
 ---
+## ★★★★★★★★ EVAL CAP ROOT-CAUSED (2026-06-21, row 95) — DECISION POINT ★★★★★★★★
+
+Big-net2 (1024 + 16 mirrored king-buckets + 8 ob) with the FULL multi-engine-survey recipe (power_error 2.5, beta1 0.95, **6 months test80 / 1.09B positions**, weight decay) = **−97 Elo equal-nodes** vs v0.12.6 (row 95). This REFINES row 94: the lever is **NOT "training recipe"** (better recipe + 3× data on the same arch family still −97). The cap is **INPUT FEATURES + DATA SCALE**:
+- Every Razor-trainable net (plain-768, 1024, 16-king-bucket) fits test80 to loss ~0.046 and caps ~3290. A dozen failures: capacity (r82 −70), buckets (r88 ~0), depth (r52 −210), from-scratch distill (r83 −862 / r84 / r90 −511), fine-tune (r59/r85 −43), self-play (r87 −221 / r89 −381), and now survey-recipe big-net (r95 −97).
+- Row 94 proves a genuinely-stronger eval IS reachable: Razor + SF's actual net (HalfKAv2_hm, **32 per-king-square buckets** + threats, trained on **~10-20B** positions) = **+308 eqnodes**. SF's edge = rich king-relative input + threats + SF-scale data, NOT a trick.
+- bullet CAN express 32-king-buckets (ChessBucketsMirrored, 32-bucket layout) ≈ HalfKA-hm. But big2 (16 buckets, 1.09B) already fails from data dilution → SF-class needs ~10-20B positions (peers: Caissa 20B, Viridithas billions) + 32kb + threat inputs + days of training. NO native HalfKA/threats in bullet (must add threats).
+
+**DECISION POINT (genuine scope/resource call): WITHIN-50 requires a multi-day SF-scale eval campaign** — download ~10-20B test80(multi-year)+2023+2022 (~hundreds GB), implement threat inputs in bullet trainer + Razor incremental inference, train 32-kb+threats net for days, with payoff UNCERTAIN (big2 at 1.09B was −97; the bet is scale+threats clear it). User pre-authorized "arch changes + unlimited compute + do whatever needed," but this reframes the project into a days-to-weeks data+compute campaign. Alternative: accept the current ceiling (~3270 8T, **M1 PASSED** r69, **+19.6 search this era** v0.12.6) and ship.
+
+SHIPPABLE STATE: HEAD = v0.12.6 (git-clean, eval 71/bench 19671 confirmed), +19.6 over v0.12.4 (prefetch+qsearch-TT). SF compat layer (src/sfnnue.rs, behind SF_NET) committed as permanent eval yardstick. big2 artifacts: razor_net_big2.rs, checkpoints_razorbig2, candidates/razor-big2.exe (proven −97, not for ship). 6 months test80 (1.09B) on disk.
+
+---
 ## ★ SESSION HANDOVER (2026-06-14) — READ THIS FIRST ★
 
 **★★ SESSION 4 CONSOLIDATED STATUS (2026-06-16) — CURRENT TRUTH, read first ★★**
