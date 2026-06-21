@@ -424,6 +424,7 @@ impl<'a> Searcher<'a> {
                 }
             }
             let child = pos.make(mv);
+            self.tt.prefetch(child.key);
             // continuation context for the child: this move's piece + dest
             self.prev_pt[ply + 1] = pos.piece_on(mv.from()).unwrap().1.idx();
             self.prev_to[ply + 1] = mv.to() as usize;
@@ -566,6 +567,7 @@ impl<'a> Searcher<'a> {
                 continue;
             }
             let child = pos.make(mv);
+            self.tt.prefetch(child.key);
             if self.use_nnue {
                 let a = crate::nnue::apply(&self.acc[ply], pos, mv);
                 self.acc[ply + 1] = a;

@@ -67,6 +67,21 @@ impl Tt {
         ((key as u128 * self.slots.len() as u128) >> 64) as usize
     }
 
+    /// Prefetch the TT slot for `key`. Call as soon as a child key is known
+    /// (before the accumulator update + recursion) so the cold-slot DRAM load
+    /// overlaps work that has to happen anyway. Pure hint: cannot change results,
+    /// bench node count, or perft — only timing.
+    #[inline(always)]
+    pub fn prefetch(&self, key: u64) {
+        #[cfg(target_arch = "x86_64")]
+        unsafe {
+            let p = self.slots.as_ptr().add(self.index(key)) as *const i8;
+            core::arch::x86_64::_mm_prefetch(p, core::arch::x86_64::_MM_HINT_T0);
+        }
+        #[cfg(not(target_arch = "x86_64"))]
+        let _ = key;
+    }
+
     #[inline(always)]
     pub fn probe(&self, key: u64) -> Option<TtEntry> {
         let s = &self.slots[self.index(key)];
