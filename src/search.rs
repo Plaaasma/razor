@@ -230,6 +230,11 @@ impl<'a> Searcher<'a> {
     /// the hand-crafted PSQT.
     #[inline(always)]
     fn eval(&self, pos: &Position, ply: usize) -> Score {
+        // SF-NNUE diagnostic: route search eval through the SF net when active
+        // (non-incremental full refresh; use fixed-nodes tests for the verdict).
+        if crate::sfnnue::active() {
+            return crate::sfnnue::evaluate_sf(pos);
+        }
         if self.use_nnue {
             #[cfg(debug_assertions)]
             {

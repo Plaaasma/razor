@@ -21,6 +21,10 @@ pub static USE_NNUE: AtomicBool = AtomicBool::new(true);
 /// Static eval from the side-to-move's perspective. Dispatches to NNUE or PSQT.
 #[inline(always)]
 pub fn evaluate(pos: &Position) -> Score {
+    // SF-NNUE compat (diagnostic): active only when SF_NET env points at a net.
+    if crate::sfnnue::active() {
+        return crate::sfnnue::evaluate_sf(pos);
+    }
     if USE_NNUE.load(Ordering::Relaxed) {
         crate::nnue::evaluate(pos)
     } else {

@@ -8,3 +8,5 @@
 # but DO track the embedded nets — include_bytes needs them to build
 !nets/*.nnue
 config.json
+
+nets/nn-*.nnue
