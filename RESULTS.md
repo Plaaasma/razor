@@ -175,4 +175,8 @@ Standard LTC confirm: 40+0.4s.
 
 | 100 | 2026-06-21 | threats 768 POWER-LOSS recipe (error^2.5 + beta1 0.95) vs v0.12.6 EQUAL NODES | v0.12.6 → thrp | [0,10] | nodes=128k 1T | 155-215-74 | H1 | **+64 eqnodes (59%)** | 444g. Power-loss recipe gave WORSE eval than squared-loss (+64 vs +80, row 96) — Viridithas's +15-24 finding did NOT transfer to this scheme/scale. Discard. Best nets: thr-768 +80 (i32, ships), thr-1024 +96 (needs i64). Note: nps is memory-bandwidth-bound → eqtime SPRTs at conc12 starve threats (artifact); re-testing at conc4 for fair speed. HEAD v0.12.6. |
 
+| 101 | 2026-06-21 | threats i8 feature weights (half table, l0 clip 0.49) vs v0.12.6 EQUAL NODES | v0.12.6 → thri8 | [0,10] | nodes=128k 1T | H1 | +55 eqnodes | **i8 PRESERVES EVAL +55** (−25 from i16 +80, precision cost) | i8 halves 6MB→3MB table. Eval mostly survives. |
+| 102 | 2026-06-21 | threats i8 INCREMENTAL (AVX2 i8→i16 widen) vs v0.12.6 EQUAL TIME 8 THREADS | v0.12.6 → thri8-inc | n/a | 10+0.1 8T conc1 | 24-77-39 | **−37 Elo (44.6%, 140g)** | ★ i8 FAILED at 8T: WORSE than i16 (0.0). The i8→i16 per-row widening overhead negated the bandwidth saving, and −25 weaker eval hurt. SPEED COST is FIXED (~−80 at 8T: producer geometry 44% + bandwidth), NOT fixable by i8. |
+| — | 2026-06-21 | THREAT SHIPPING CONCLUSION | — | — | — | — | **i16 threats best: +80 eqnodes; ships +15 @1T-lowconc, 0.0 @8T (speed cancels eval). i8 doesn't help.** | To ship at 8T need EVAL > the ~80 fixed speed cost. Path: SCALE EVAL via SF-scale data (corpus downloading to dl380, 10-20B) → +150 eqnodes? → +70 @8T → ships. Data scale is the lever, not quantization. HEAD v0.12.6. |
+
 <!-- Append rows below as tests complete. Never delete rows. -->
