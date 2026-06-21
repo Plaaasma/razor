@@ -234,6 +234,7 @@ pub fn init_attack_tables() {
     BISHOP_TABLE.get_or_init(|| build_pext_table(&BISHOP_DELTAS));
     LINE_BETWEEN.get_or_init(build_between);
     LINE_THROUGH.get_or_init(build_through);
+    LINE_RAY_PAST.get_or_init(build_ray_past);
 }
 
 #[inline(always)]
@@ -261,6 +262,7 @@ pub fn queen_attacks(sq: Square, occ: Bitboard) -> Bitboard {
 
 static LINE_BETWEEN: OnceLock<Box<[[Bitboard; 64]; 64]>> = OnceLock::new();
 static LINE_THROUGH: OnceLock<Box<[[Bitboard; 64]; 64]>> = OnceLock::new();
+static LINE_RAY_PAST: OnceLock<Box<[[Bitboard; 64]; 64]>> = OnceLock::new();
 
 fn build_between() -> Box<[[Bitboard; 64]; 64]> {
     let mut t = vec![[0u64; 64]; 64];
@@ -294,6 +296,31 @@ fn build_through() -> Box<[[Bitboard; 64]; 64]> {
     t.into_boxed_slice().try_into().unwrap()
 }
 
+/// Squares strictly BEYOND b on the a->b ray (the shadow b casts away from a),
+/// if aligned, else empty. = a's empty-board ray minus its b-blocked ray.
+/// Used by incremental NNUE threats for discovered/blocked slider rays.
+fn build_ray_past() -> Box<[[Bitboard; 64]; 64]> {
+    let mut t = vec![[0u64; 64]; 64];
+    for a in 0..64u8 {
+        for b in 0..64u8 {
+            for deltas in [&ROOK_DELTAS, &BISHOP_DELTAS] {
+                if slider_attacks_slow(a, 0, deltas) & bb(b) != 0 {
+                    let full = slider_attacks_slow(a, 0, deltas);
+                    let blocked = slider_attacks_slow(a, bb(b), deltas);
+                    t[a as usize][b as usize] = full & !blocked;
+                }
+            }
+        }
+    }
+    t.into_boxed_slice().try_into().unwrap()
+}
+
+/// Squares strictly beyond b on the a->b ray, else empty.
+#[inline(always)]
+pub fn ray_past(a: Square, b: Square) -> Bitboard {
+    LINE_RAY_PAST.get().unwrap()[a as usize][b as usize]
+}
+
 /// Squares strictly between a and b if aligned, else empty.
 #[inline(always)]
 pub fn between(a: Square, b: Square) -> Bitboard {
@@ -323,6 +350,24 @@ mod tests {
                 assert_eq!(bishop_attacks(sq, occ), slider_attacks_slow(sq, occ, &BISHOP_DELTAS));
             }
         }
+    }
+
+    #[test]
+    fn ray_past_sanity() {
+        init_attack_tables();
+        use crate::types::parse_square as p;
+        let (a1, a4) = (p("a1").unwrap(), p("a4").unwrap());
+        // beyond a4 on the a1->a4 ray = a5,a6,a7,a8
+        assert_eq!(ray_past(a1, a4).count_ones(), 4);
+        assert_eq!(ray_past(a1, a4) & bb(p("a5").unwrap()), bb(p("a5").unwrap()));
+        assert_eq!(ray_past(a1, a4) & bb(p("a3").unwrap()), 0); // a3 is between, not beyond
+        // a1 is the edge away from a4 -> nothing beyond
+        assert_eq!(ray_past(a4, a1), 0);
+        // diagonal: beyond c3 on a1->c3 ray = d4,e5,f6,g7,h8
+        let (a1d, c3) = (p("a1").unwrap(), p("c3").unwrap());
+        assert_eq!(ray_past(a1d, c3).count_ones(), 5);
+        // non-aligned -> empty
+        assert_eq!(ray_past(p("a1").unwrap(), p("b3").unwrap()), 0);
     }
 
     #[test]
