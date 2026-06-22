@@ -155,19 +155,32 @@ const THR_BASE: [u16; 50] = {
     t
 };
 
-/// White-perspective THREAT-LOCAL feature index in 0..3200 (the row index into
-/// `threat_weights`; the global feature index would be `THREAT_OFF + this`).
-/// vic_sq is the raw victim square.
+/// Own-king file-half mirror per perspective: 7 if that side's king is on files
+/// e-h (file index >= 4), else 0. The threat victim square is XORed by this
+/// (after ^56 for black) so threats become king-relative (SF HalfKA OrientTBL
+/// style) at ZERO extra dims. A KING MOVE changes the mirror — re-orienting every
+/// threat feature for that perspective — so `apply()` refreshes on king moves
+/// (rare) rather than updating incrementally. Must match bullet ThreatInputsKM.
 #[inline(always)]
-fn thr_feat_w(att_pt: usize, vic_pt: usize, enemy: usize, vic_sq: Square) -> usize {
-    THR_BASE[(att_pt * 5 + vic_pt) * 2 + enemy] as usize + vic_sq as usize
+fn king_mirror(pos: &Position) -> (u8, u8) {
+    let wk = pos.pieces(Color::White, PieceType::King).trailing_zeros() as u8;
+    let bk = pos.pieces(Color::Black, PieceType::King).trailing_zeros() as u8;
+    (if (wk & 7) >= 4 { 7 } else { 0 }, if (bk & 7) >= 4 { 7 } else { 0 })
 }
 
-/// Black-perspective THREAT-LOCAL feature index in 0..3200 (victim square
-/// mirrored).
+/// White-perspective THREAT-LOCAL feature index in 0..3200 (the row index into
+/// `threat_weights`; the global feature index would be `THREAT_OFF + this`).
+/// `wk` is the White king-file mirror (0 or 7) applied to the victim square.
 #[inline(always)]
-fn thr_feat_b(att_pt: usize, vic_pt: usize, enemy: usize, vic_sq: Square) -> usize {
-    THR_BASE[(att_pt * 5 + vic_pt) * 2 + enemy] as usize + (vic_sq ^ 56) as usize
+fn thr_feat_w(att_pt: usize, vic_pt: usize, enemy: usize, vic_sq: Square, wk: u8) -> usize {
+    THR_BASE[(att_pt * 5 + vic_pt) * 2 + enemy] as usize + (vic_sq ^ wk) as usize
+}
+
+/// Black-perspective THREAT-LOCAL feature index in 0..3200 (victim square ^56 for
+/// the perspective flip, then ^bk for the Black king-file mirror).
+#[inline(always)]
+fn thr_feat_b(att_pt: usize, vic_pt: usize, enemy: usize, vic_sq: Square, bk: u8) -> usize {
+    THR_BASE[(att_pt * 5 + vic_pt) * 2 + enemy] as usize + ((vic_sq ^ 56) ^ bk) as usize
 }
 
 #[inline(always)]
@@ -236,8 +249,9 @@ impl Accumulator {
                 }
             }
         }
+        let (wk, bk) = king_mirror(pos);
         for_each_threat(pos, |att_pt, vic_pt, enemy, vsq| {
-            acc.thr_add(att_pt, vic_pt, enemy, vsq);
+            acc.thr_add(att_pt, vic_pt, enemy, vsq, wk, bk);
         });
         acc
     }
@@ -264,10 +278,10 @@ impl Accumulator {
     /// refresh oracle; the incremental path batches instead — see ThreatBatch).
     /// Threat rows are i8 (split-quant) and widened to i16 inside the kernel.
     #[inline(always)]
-    fn thr_add(&mut self, att_pt: usize, vic_pt: usize, enemy: usize, vsq: Square) {
+    fn thr_add(&mut self, att_pt: usize, vic_pt: usize, enemy: usize, vsq: Square, wk: u8, bk: u8) {
         let net = net();
-        add_row_i8(&mut self.w, &net.threat_weights[thr_feat_w(att_pt, vic_pt, enemy, vsq)]);
-        add_row_i8(&mut self.b, &net.threat_weights[thr_feat_b(att_pt, vic_pt, enemy, vsq)]);
+        add_row_i8(&mut self.w, &net.threat_weights[thr_feat_w(att_pt, vic_pt, enemy, vsq, wk)]);
+        add_row_i8(&mut self.b, &net.threat_weights[thr_feat_b(att_pt, vic_pt, enemy, vsq, bk)]);
     }
 
     /// Evaluate from the side-to-move's perspective. Threats are already folded
@@ -316,12 +330,17 @@ struct ThreatBatch {
     b_idx: [u16; MAX_DELTAS],
     sign: [i16; MAX_DELTAS],
     len: usize,
+    // king-file mirror for each perspective, constant across a non-king move's
+    // toggles (apply() refreshes instead of going incremental on king moves, so
+    // the mirror never changes mid-batch).
+    wk: u8,
+    bk: u8,
 }
 
 impl ThreatBatch {
     #[inline(always)]
-    fn new() -> ThreatBatch {
-        ThreatBatch { w_idx: [0; MAX_DELTAS], b_idx: [0; MAX_DELTAS], sign: [0; MAX_DELTAS], len: 0 }
+    fn new(wk: u8, bk: u8) -> ThreatBatch {
+        ThreatBatch { w_idx: [0; MAX_DELTAS], b_idx: [0; MAX_DELTAS], sign: [0; MAX_DELTAS], len: 0, wk, bk }
     }
 
     /// Push one toggled threat tuple, skipping king attacker/victim. Coalesces
@@ -331,8 +350,8 @@ impl ThreatBatch {
         if att_pt == 5 || vic_pt == 5 {
             return; // king never an attacker or victim
         }
-        let wf = thr_feat_w(att_pt, vic_pt, enemy, vsq) as u16;
-        let bf = thr_feat_b(att_pt, vic_pt, enemy, vsq) as u16;
+        let wf = thr_feat_w(att_pt, vic_pt, enemy, vsq, self.wk) as u16;
+        let bf = thr_feat_b(att_pt, vic_pt, enemy, vsq, self.bk) as u16;
         let s: i16 = if add { 1 } else { -1 };
         // coalesce with an existing identical feature pair (cheap for the small
         // buffers a single move produces — the loop body is branch-predictable
@@ -886,8 +905,14 @@ pub fn apply_lazy(parent: &Accumulator, pos: &Position, mv: Move) -> Accumulator
     // running board for the threat replay, starts as the parent; threat toggles
     // are collected in `batch`, netted, then applied to `acc` in one fused pass.
     // Compact (8 u64 bitboards) — no Position clone, no mailbox/zobrist copy.
+    // King moves change the king-file mirror (re-orienting every threat for that
+    // perspective), which is not incrementally derivable — apply() routes king
+    // moves to a full refresh, so apply_lazy only ever sees NON-king moves and the
+    // parent mirror equals the child mirror. Compute it once for the whole batch.
+    debug_assert!(pti != PieceType::King.idx(), "apply_lazy must not be called on a king move (apply() refreshes those)");
+    let (wk, bk) = king_mirror(pos);
     let mut b = RunBoard::from_pos(pos);
-    let mut batch = ThreatBatch::new();
+    let mut batch = ThreatBatch::new(wk, bk);
 
     match mv.flags() {
         flag::QUIET | flag::DOUBLE_PUSH => {
@@ -977,10 +1002,16 @@ pub fn apply_lazy(parent: &Accumulator, pos: &Position, mv: Move) -> Accumulator
     acc
 }
 
-/// Eager shim keeping the 4-arg signature for the search call sites and the
-/// nnue tests. `_child` is unused (the producer reconstructs the post-move board
-/// on the RunBoard itself); delegates to `apply_lazy`.
-pub fn apply(parent: &Accumulator, pos: &Position, _child: &Position, mv: Move) -> Accumulator {
+/// Eager shim keeping the 4-arg signature for the search call sites and the nnue
+/// tests. KING MOVES (incl. castling) change the king-file mirror, re-orienting
+/// every threat feature for that perspective — not incrementally derivable — so
+/// those refresh the accumulator from `child` (king moves are rare). Every other
+/// move goes through the incremental apply_lazy: only a king move changes a
+/// king's file, so the mirror is constant across a non-king move's toggles.
+pub fn apply(parent: &Accumulator, pos: &Position, child: &Position, mv: Move) -> Accumulator {
+    if pos.piece_on(mv.from()).expect("nnue apply: empty from").1.idx() == PieceType::King.idx() {
+        return Accumulator::refresh(child);
+    }
     apply_lazy(parent, pos, mv)
 }
 
@@ -1014,9 +1045,10 @@ pub fn evaluate_recompute_ref(pos: &Position) -> Score {
         sw[i] = acc.w[i] as i32;
         sb[i] = acc.b[i] as i32;
     }
+    let (wk, bk) = king_mirror(pos);
     for_each_threat(pos, |att_pt, vic_pt, enemy, vsq| {
-        let wf = &net.threat_weights[thr_feat_w(att_pt, vic_pt, enemy, vsq)];
-        let bf = &net.threat_weights[thr_feat_b(att_pt, vic_pt, enemy, vsq)];
+        let wf = &net.threat_weights[thr_feat_w(att_pt, vic_pt, enemy, vsq, wk)];
+        let bf = &net.threat_weights[thr_feat_b(att_pt, vic_pt, enemy, vsq, bk)];
         for k in 0..HIDDEN {
             sw[k] += wf[k] as i32;
             sb[k] += bf[k] as i32;
