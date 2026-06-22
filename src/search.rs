@@ -434,7 +434,7 @@ impl<'a> Searcher<'a> {
             self.prev_pt[ply + 1] = pos.piece_on(mv.from()).unwrap().1.idx();
             self.prev_to[ply + 1] = mv.to() as usize;
             if self.use_nnue {
-                let a = crate::nnue::apply(&self.acc[ply], pos, mv);
+                let a = crate::nnue::apply(&self.acc[ply], pos, &child, mv);
                 self.acc[ply + 1] = a;
             }
             // PVS: full window only for the first move; the rest get a null
@@ -590,7 +590,7 @@ impl<'a> Searcher<'a> {
             let child = pos.make(mv);
             self.tt.prefetch(child.key);
             if self.use_nnue {
-                let a = crate::nnue::apply(&self.acc[ply], pos, mv);
+                let a = crate::nnue::apply(&self.acc[ply], pos, &child, mv);
                 self.acc[ply + 1] = a;
             }
             let score = -self.qsearch(&child, -beta, -alpha, ply + 1);

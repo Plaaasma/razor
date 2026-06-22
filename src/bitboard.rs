@@ -234,7 +234,7 @@ pub fn init_attack_tables() {
     BISHOP_TABLE.get_or_init(|| build_pext_table(&BISHOP_DELTAS));
     LINE_BETWEEN.get_or_init(build_between);
     LINE_THROUGH.get_or_init(build_through);
-    LINE_RAY_PAST.get_or_init(build_ray_past);
+    LINE_PAST.get_or_init(build_past); // depends on LINE_BETWEEN
 }
 
 #[inline(always)]
@@ -262,7 +262,6 @@ pub fn queen_attacks(sq: Square, occ: Bitboard) -> Bitboard {
 
 static LINE_BETWEEN: OnceLock<Box<[[Bitboard; 64]; 64]>> = OnceLock::new();
 static LINE_THROUGH: OnceLock<Box<[[Bitboard; 64]; 64]>> = OnceLock::new();
-static LINE_RAY_PAST: OnceLock<Box<[[Bitboard; 64]; 64]>> = OnceLock::new();
 
 fn build_between() -> Box<[[Bitboard; 64]; 64]> {
     let mut t = vec![[0u64; 64]; 64];
@@ -296,31 +295,6 @@ fn build_through() -> Box<[[Bitboard; 64]; 64]> {
     t.into_boxed_slice().try_into().unwrap()
 }
 
-/// Squares strictly BEYOND b on the a->b ray (the shadow b casts away from a),
-/// if aligned, else empty. = a's empty-board ray minus its b-blocked ray.
-/// Used by incremental NNUE threats for discovered/blocked slider rays.
-fn build_ray_past() -> Box<[[Bitboard; 64]; 64]> {
-    let mut t = vec![[0u64; 64]; 64];
-    for a in 0..64u8 {
-        for b in 0..64u8 {
-            for deltas in [&ROOK_DELTAS, &BISHOP_DELTAS] {
-                if slider_attacks_slow(a, 0, deltas) & bb(b) != 0 {
-                    let full = slider_attacks_slow(a, 0, deltas);
-                    let blocked = slider_attacks_slow(a, bb(b), deltas);
-                    t[a as usize][b as usize] = full & !blocked;
-                }
-            }
-        }
-    }
-    t.into_boxed_slice().try_into().unwrap()
-}
-
-/// Squares strictly beyond b on the a->b ray, else empty.
-#[inline(always)]
-pub fn ray_past(a: Square, b: Square) -> Bitboard {
-    LINE_RAY_PAST.get().unwrap()[a as usize][b as usize]
-}
-
 /// Squares strictly between a and b if aligned, else empty.
 #[inline(always)]
 pub fn between(a: Square, b: Square) -> Bitboard {
@@ -331,6 +305,44 @@ pub fn between(a: Square, b: Square) -> Bitboard {
 #[inline(always)]
 pub fn line_through(a: Square, b: Square) -> Bitboard {
     LINE_THROUGH.get().unwrap()[a as usize][b as usize]
+}
+
+// ---------------------------------------------------------------------------
+// Ray-past: the directed ray STRICTLY BEYOND b on the a->b line (the "shadow"
+// b casts away from a). Used by the incremental-threat discovered-ray probe:
+// `ray_past(slider, sq) & occ & queen_attacks(sq, occ)` is the single square a
+// slider on `slider` newly sees / loses sight of when the piece on `sq` toggles.
+// ---------------------------------------------------------------------------
+
+static LINE_PAST: OnceLock<Box<[[Bitboard; 64]; 64]>> = OnceLock::new();
+
+fn build_past() -> Box<[[Bitboard; 64]; 64]> {
+    let mut t = vec![[0u64; 64]; 64];
+    for a in 0..64u8 {
+        for b in 0..64u8 {
+            for deltas in [&ROOK_DELTAS, &BISHOP_DELTAS] {
+                // a and b aligned on this ray family?
+                if slider_attacks_slow(a, 0, deltas) & bb(b) != 0 {
+                    // attacks from b with `a` as sole blocker: stops at a on the
+                    // a-side, runs to the edge on the away-side. Restrict to the
+                    // a-b line and drop the near segment + both endpoints, leaving
+                    // exactly the squares strictly beyond b away from a.
+                    let from_b = slider_attacks_slow(b, bb(a), deltas);
+                    let line = slider_attacks_slow(a, 0, deltas) & slider_attacks_slow(b, 0, deltas);
+                    let line = line | bb(a) | bb(b);
+                    t[a as usize][b as usize] = from_b & line & !between(a, b) & !bb(a) & !bb(b);
+                }
+            }
+        }
+    }
+    t.into_boxed_slice().try_into().unwrap()
+}
+
+/// Squares strictly beyond `b` on the `a`->`b` ray (the shadow `b` casts away
+/// from `a`), if aligned, else empty. Requires `init_attack_tables()`.
+#[inline(always)]
+pub fn ray_past(a: Square, b: Square) -> Bitboard {
+    LINE_PAST.get().unwrap()[a as usize][b as usize]
 }
 
 #[cfg(test)]
@@ -353,24 +365,6 @@ mod tests {
     }
 
     #[test]
-    fn ray_past_sanity() {
-        init_attack_tables();
-        use crate::types::parse_square as p;
-        let (a1, a4) = (p("a1").unwrap(), p("a4").unwrap());
-        // beyond a4 on the a1->a4 ray = a5,a6,a7,a8
-        assert_eq!(ray_past(a1, a4).count_ones(), 4);
-        assert_eq!(ray_past(a1, a4) & bb(p("a5").unwrap()), bb(p("a5").unwrap()));
-        assert_eq!(ray_past(a1, a4) & bb(p("a3").unwrap()), 0); // a3 is between, not beyond
-        // a1 is the edge away from a4 -> nothing beyond
-        assert_eq!(ray_past(a4, a1), 0);
-        // diagonal: beyond c3 on a1->c3 ray = d4,e5,f6,g7,h8
-        let (a1d, c3) = (p("a1").unwrap(), p("c3").unwrap());
-        assert_eq!(ray_past(a1d, c3).count_ones(), 5);
-        // non-aligned -> empty
-        assert_eq!(ray_past(p("a1").unwrap(), p("b3").unwrap()), 0);
-    }
-
-    #[test]
     fn between_sanity() {
         init_attack_tables();
         use crate::types::parse_square as p;
@@ -380,5 +374,25 @@ mod tests {
         assert_eq!(between(e1, e8).count_ones(), 6);
         let (a1, b3) = (p("a1").unwrap(), p("b3").unwrap());
         assert_eq!(between(a1, b3), 0);
+    }
+
+    #[test]
+    fn ray_past_sanity() {
+        init_attack_tables();
+        use crate::types::parse_square as p;
+        let sq = |s: &str| p(s).unwrap();
+        // a1 -> a4: strictly beyond a4 = {a5,a6,a7,a8}
+        let expect: Bitboard = [sq("a5"), sq("a6"), sq("a7"), sq("a8")].iter().map(|&s| bb(s)).fold(0, |a, b| a | b);
+        assert_eq!(ray_past(sq("a1"), sq("a4")), expect);
+        // a4 -> a1: a1 is on the edge, nothing beyond it
+        assert_eq!(ray_past(sq("a4"), sq("a1")), 0);
+        // direction-independent: h8 -> e5 along the diagonal, beyond e5 = {d4,c3,b2,a1}
+        let expect2: Bitboard = [sq("d4"), sq("c3"), sq("b2"), sq("a1")].iter().map(|&s| bb(s)).fold(0, |a, b| a | b);
+        assert_eq!(ray_past(sq("h8"), sq("e5")), expect2);
+        // rank: a1 -> d1, beyond d1 = {e1,f1,g1,h1}
+        let expect3: Bitboard = [sq("e1"), sq("f1"), sq("g1"), sq("h1")].iter().map(|&s| bb(s)).fold(0, |a, b| a | b);
+        assert_eq!(ray_past(sq("a1"), sq("d1")), expect3);
+        // not aligned -> empty
+        assert_eq!(ray_past(sq("a1"), sq("b3")), 0);
     }
 }

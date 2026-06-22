@@ -93,6 +93,53 @@ fn main() {
             println!("Time (ms)       : {ms}");
             println!("Nodes/second    : {}", total * 1000 / ms);
         }
+        Some("applybench") => {
+            // Microbenchmark the NNUE incremental `apply` in isolation (no
+            // search noise): for each FEN, refresh the parent accumulator, then
+            // call apply() for every legal move, repeated many times. Reports
+            // ns/apply. Deterministic work each run -> low-variance A/B.
+            let iters: u64 = args.get(2).and_then(|n| n.parse().ok()).unwrap_or(2_000_000);
+            const FENS: &[&str] = &[
+                position::START_FEN,
+                "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+                "r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10",
+                "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
+                "r3k2r/pppq1ppp/2nbbn2/3pp3/3PP3/2NBBN2/PPPQ1PPP/R3K2R w KQkq - 0 1",
+            ];
+            let mut work: Vec<(Position, nnue::Accumulator, Vec<types::Move>)> = Vec::new();
+            for fen in FENS {
+                let pos = Position::from_fen(fen).unwrap();
+                let acc = nnue::Accumulator::refresh(&pos);
+                let mut list = movegen::MoveList::new();
+                movegen::generate_moves(&pos, &mut list);
+                work.push((pos, acc, list.iter().collect()));
+            }
+            let total_moves: u64 = work.iter().map(|(_, _, m)| m.len() as u64).sum();
+            let mut applies = 0u64;
+            let mut sink = 0i64;
+            let t = std::time::Instant::now();
+            'outer: loop {
+                for (pos, acc, moves) in &work {
+                    for &mv in moves {
+                        let child = pos.make(mv);
+                        let a = nnue::apply(acc, pos, &child, mv);
+                        // consume the result so the call isn't optimized away
+                        sink = sink.wrapping_add(a.w[0] as i64 + a.b[0] as i64);
+                        applies += 1;
+                        if applies >= iters {
+                            break 'outer;
+                        }
+                    }
+                }
+            }
+            let ns = t.elapsed().as_nanos() as f64;
+            println!(
+                "applybench: {applies} applies in {:.1} ms = {:.1} ns/apply ({:.2} M apply/s) [moves/cycle={total_moves}] sink={sink}",
+                ns / 1e6,
+                ns / applies as f64,
+                applies as f64 / (ns / 1e9) / 1e6,
+            );
+        }
         Some("datagen") => {
             // datagen <out.txt> <num_positions> [seed]
             let out = args.get(2).map(String::as_str).unwrap_or("data.txt");
