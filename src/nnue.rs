@@ -351,13 +351,18 @@ impl ThreatBatch {
         self.len = i + 1;
     }
 
-    /// Apply the netted residual to the accumulator in one fused pass. The
-    /// add/sub of each survivor THREAT row into w/b is the dominant FT cost on
-    /// the threat path, so the common +1/-1 cases run the AVX2 widen-fused i8
-    /// kernel (i8 row -> i16 add/sub); the rare |sign| > 1 survivor runs the
-    /// widen-fused multiply-add (`madd_row_i8`). All three never store a widened
-    /// row to memory. Indices in w_idx/b_idx are THREAT-LOCAL (rows into
-    /// `threat_weights`, 0..3200).
+    /// Apply the netted residual to the accumulator with REGISTER-TILED fused
+    /// add/sub. Each perspective accumulator is processed one TILE_H-lane tile at
+    /// a time: the tile is loaded into TILE_REGS ymm registers once, every
+    /// surviving threat column for that tile is folded in (i8 -> i16 widened in
+    /// register, never materialized; +1 adds, -1 subtracts, the rare |s|>1
+    /// multiply-adds), and the tile is stored once. Accumulator load/store
+    /// traffic is therefore NUM_TILES passes regardless of survivor count, vs the
+    /// old one full-width load+store per survivor. Bit-identical to the per-row
+    /// kernels: the same signed i16 column sums, only reordered/regrouped (integer
+    /// add is associative and commutative; the i16 accumulator never overflows,
+    /// gated by the per-node assert). Indices in w_idx/b_idx are THREAT-LOCAL
+    /// (rows into `threat_weights`, 0..3200).
     #[inline]
     fn apply_to(&self, acc: &mut Accumulator) {
         let net = net();
@@ -378,25 +383,150 @@ impl ThreatBatch {
                 _mm_prefetch(net.threat_weights.as_ptr().add(self.w_idx[i] as usize) as *const i8, _MM_HINT_T0);
                 _mm_prefetch(net.threat_weights.as_ptr().add(self.b_idx[i] as usize) as *const i8, _MM_HINT_T0);
             }
+            tiled_apply_avx2(&mut acc.w, &net.threat_weights, &self.w_idx, &self.sign, self.len);
+            tiled_apply_avx2(&mut acc.b, &net.threat_weights, &self.b_idx, &self.sign, self.len);
         }
-        for i in 0..self.len {
-            let s = self.sign[i];
+        #[cfg(not(target_feature = "avx2"))]
+        {
+            tiled_apply_scalar(&mut acc.w, &net.threat_weights, &self.w_idx, &self.sign, self.len);
+            tiled_apply_scalar(&mut acc.b, &net.threat_weights, &self.b_idx, &self.sign, self.len);
+        }
+    }
+}
+
+// Register-tiling geometry for the threat FT-apply. vec_t = __m256i = 16 i16
+// lanes; TILE_REGS ymm registers hold one TILE_H-lane tile of a perspective
+// accumulator, and NUM_TILES tiles cover HIDDEN. 8 tile regs + the i8 column load
+// + cvtepi8 widen (+ the rare set1 multiplier) use ~10 of the 16 architectural
+// ymm — comfortable headroom, no spill (confirmed empirically: applybench
+// 451->311 ns/apply, midgame nps +8%; 8 measured slightly faster than 12 on the
+// apply microbench and tied in search). If HIDDEN changes, keep TILE_REGS a
+// divisor of HIDDEN/16.
+const TILE_REGS: usize = 8;
+const TILE_H: usize = TILE_REGS * 16; // 128 i16 lanes per tile
+const NUM_TILES: usize = HIDDEN / TILE_H; // 6
+const _: () = assert!(HIDDEN % TILE_H == 0, "HIDDEN must be a multiple of TILE_H for the tiled apply");
+
+/// Register-tiled fused apply of the netted threat survivors into ONE perspective
+/// accumulator. `idx`/`sign` are the batch's w_idx-or-b_idx and signs; only the
+/// first `len` entries are live and sign==0 entries are skipped. Each TILE_H-lane
+/// tile of `acc` is loaded into TILE_REGS ymm once, every survivor's i8 column
+/// (widened to i16 in register, never materialized) is added/subtracted/scaled
+/// into the registers, and the tile is stored once. Bit-identical to repeated
+/// add_row_i8/sub_row_i8/madd_row_i8.
+#[cfg(target_feature = "avx2")]
+#[inline]
+fn tiled_apply_avx2(
+    acc: &mut [i16; HIDDEN],
+    weights: &[[i8; HIDDEN]; NUM_THREAT],
+    idx: &[u16; MAX_DELTAS],
+    sign: &[i16; MAX_DELTAS],
+    len: usize,
+) {
+    use std::arch::x86_64::*;
+    // SAFETY: idx[i] < NUM_THREAT (threat-local indices) so each row pointer stays
+    // in `weights`, and off + r*16 < HIDDEN so every acc/column load+store is in
+    // bounds; AVX2 is guaranteed by the cfg gate.
+    unsafe {
+    let wbase = weights.as_ptr() as *const i8; // threat row r begins at wbase + r*HIDDEN
+    let mut t = 0;
+    while t < NUM_TILES {
+        let off = t * TILE_H;
+        // load this tile of the accumulator into registers once
+        let mut reg = [_mm256_setzero_si256(); TILE_REGS];
+        let mut r = 0;
+        while r < TILE_REGS {
+            reg[r] = _mm256_loadu_si256(acc.as_ptr().add(off + r * 16) as *const __m256i);
+            r += 1;
+        }
+        // fold every survivor's column for this tile into the registers
+        let mut i = 0;
+        while i < len {
+            let s = sign[i];
+            if s != 0 {
+                let col = wbase.add(idx[i] as usize * HIDDEN + off);
+                if s == 1 {
+                    let mut r = 0;
+                    while r < TILE_REGS {
+                        let w = _mm256_cvtepi8_epi16(_mm_loadu_si128(col.add(r * 16) as *const __m128i));
+                        reg[r] = _mm256_add_epi16(reg[r], w);
+                        r += 1;
+                    }
+                } else if s == -1 {
+                    let mut r = 0;
+                    while r < TILE_REGS {
+                        let w = _mm256_cvtepi8_epi16(_mm_loadu_si128(col.add(r * 16) as *const __m128i));
+                        reg[r] = _mm256_sub_epi16(reg[r], w);
+                        r += 1;
+                    }
+                } else {
+                    // rare |s| > 1: widen then multiply-add (low 16 bits of s*w
+                    // == the wrapped repeated sum, identical to madd_row_i8).
+                    let mul = _mm256_set1_epi16(s);
+                    let mut r = 0;
+                    while r < TILE_REGS {
+                        let w = _mm256_cvtepi8_epi16(_mm_loadu_si128(col.add(r * 16) as *const __m128i));
+                        reg[r] = _mm256_add_epi16(reg[r], _mm256_mullo_epi16(w, mul));
+                        r += 1;
+                    }
+                }
+            }
+            i += 1;
+        }
+        // store this tile once
+        let mut r = 0;
+        while r < TILE_REGS {
+            _mm256_storeu_si256(acc.as_mut_ptr().add(off + r * 16) as *mut __m256i, reg[r]);
+            r += 1;
+        }
+        t += 1;
+    }
+    } // unsafe
+}
+
+/// Scalar fallback (non-avx2, e.g. aarch64/Spark). Same tile-once load/store
+/// shape so the arithmetic order matches the AVX2 kernel; the inner i16 loop
+/// auto-vectorizes well under target-cpu=native.
+#[cfg(not(target_feature = "avx2"))]
+#[inline]
+fn tiled_apply_scalar(
+    acc: &mut [i16; HIDDEN],
+    weights: &[[i8; HIDDEN]; NUM_THREAT],
+    idx: &[u16; MAX_DELTAS],
+    sign: &[i16; MAX_DELTAS],
+    len: usize,
+) {
+    let mut t = 0;
+    while t < NUM_TILES {
+        let off = t * TILE_H;
+        let mut tile = [0i16; TILE_H];
+        for j in 0..TILE_H {
+            tile[j] = acc[off + j];
+        }
+        for i in 0..len {
+            let s = sign[i];
             if s == 0 {
                 continue;
             }
-            let wf = &net.threat_weights[self.w_idx[i] as usize];
-            let bf = &net.threat_weights[self.b_idx[i] as usize];
+            let row = &weights[idx[i] as usize];
             if s == 1 {
-                add_row_i8(&mut acc.w, wf);
-                add_row_i8(&mut acc.b, bf);
+                for j in 0..TILE_H {
+                    tile[j] += row[off + j] as i16;
+                }
             } else if s == -1 {
-                sub_row_i8(&mut acc.w, wf);
-                sub_row_i8(&mut acc.b, bf);
+                for j in 0..TILE_H {
+                    tile[j] -= row[off + j] as i16;
+                }
             } else {
-                madd_row_i8(&mut acc.w, wf, s);
-                madd_row_i8(&mut acc.b, bf, s);
+                for j in 0..TILE_H {
+                    tile[j] += s * row[off + j] as i16;
+                }
             }
         }
+        for j in 0..TILE_H {
+            acc[off + j] = tile[j];
+        }
+        t += 1;
     }
 }
 
@@ -464,54 +594,6 @@ fn add_row_i8(dst: &mut [i16; HIDDEN], src: &[i8; HIDDEN]) {
     #[cfg(not(target_feature = "avx2"))]
     for k in 0..HIDDEN {
         dst[k] += src[k] as i16;
-    }
-}
-
-/// `dst[k] -= src[k]` over HIDDEN, widening the i8 THREAT `src` to i16 INLINE.
-/// AVX2 (16 lanes/iter) when available; see `add_row_i8` for the widen-fusion
-/// rationale.
-#[inline(always)]
-fn sub_row_i8(dst: &mut [i16; HIDDEN], src: &[i8; HIDDEN]) {
-    #[cfg(target_feature = "avx2")]
-    unsafe {
-        use std::arch::x86_64::*;
-        let mut k = 0;
-        while k < HIDDEN {
-            let a = _mm256_loadu_si256(dst.as_ptr().add(k) as *const __m256i);
-            let b = _mm256_cvtepi8_epi16(_mm_loadu_si128(src.as_ptr().add(k) as *const __m128i));
-            _mm256_storeu_si256(dst.as_mut_ptr().add(k) as *mut __m256i, _mm256_sub_epi16(a, b));
-            k += 16;
-        }
-    }
-    #[cfg(not(target_feature = "avx2"))]
-    for k in 0..HIDDEN {
-        dst[k] -= src[k] as i16;
-    }
-}
-
-/// `dst[k] += s * src[k]` over HIDDEN, widening the i8 THREAT `src` to i16
-/// INLINE and scaling by the (rare) survivor count `|s| > 1`. AVX2: widen 16 i8
-/// -> i16, then `_mm256_mullo_epi16` against a broadcast of `s` before adding.
-/// The widened row is never stored. Scalar fallback widens then multiplies in
-/// i16, matching the `±1` kernels' arithmetic exactly.
-#[inline(always)]
-fn madd_row_i8(dst: &mut [i16; HIDDEN], src: &[i8; HIDDEN], s: i16) {
-    #[cfg(target_feature = "avx2")]
-    unsafe {
-        use std::arch::x86_64::*;
-        let mul = _mm256_set1_epi16(s);
-        let mut k = 0;
-        while k < HIDDEN {
-            let a = _mm256_loadu_si256(dst.as_ptr().add(k) as *const __m256i);
-            let b = _mm256_cvtepi8_epi16(_mm_loadu_si128(src.as_ptr().add(k) as *const __m128i));
-            let scaled = _mm256_mullo_epi16(b, mul);
-            _mm256_storeu_si256(dst.as_mut_ptr().add(k) as *mut __m256i, _mm256_add_epi16(a, scaled));
-            k += 16;
-        }
-    }
-    #[cfg(not(target_feature = "avx2"))]
-    for k in 0..HIDDEN {
-        dst[k] += s * src[k] as i16;
     }
 }
 
