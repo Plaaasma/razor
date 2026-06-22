@@ -8,19 +8,56 @@ use crate::position::Position;
 use crate::tt::{BOUND_EXACT, BOUND_LOWER, BOUND_UPPER, Tt, score_from_tt, score_to_tt};
 use crate::types::{MOVE_NONE, Move, PieceType};
 use std::sync::OnceLock;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Instant;
+
+/// Shared, externally-mutable search control. Lets the UCI loop stop a search
+/// running on another thread, and convert a `go ponder` (infinite) search into
+/// a timed one when `ponderhit` arrives — without restarting the search.
+pub struct SearchControl {
+    /// set to true to make every searcher stop at its next limit check
+    pub stop: AtomicBool,
+    /// set to true on `ponderhit`: the searcher rebases its deadline to
+    /// `elapsed_now + ponder_budget_ms`, so the time budget runs from the hit,
+    /// not from when the (free) pondering began.
+    pub ponderhit: AtomicBool,
+    /// time budget in ms to apply once `ponderhit` fires. u64::MAX = none.
+    pub ponder_budget_ms: AtomicU64,
+}
+
+impl SearchControl {
+    pub fn new() -> SearchControl {
+        SearchControl {
+            stop: AtomicBool::new(false),
+            ponderhit: AtomicBool::new(false),
+            ponder_budget_ms: AtomicU64::new(u64::MAX),
+        }
+    }
+}
 
 pub struct Limits {
     /// our clock in ms
     pub time: Option<u64>,
     /// our increment in ms
     pub inc: Option<u64>,
+    /// moves left to the next time control (UCI `movestogo`), if given
+    pub movestogo: Option<u64>,
     pub movetime: Option<u64>,
     pub depth: Option<u32>,
     pub nodes: Option<u64>,
     /// per-move communication overhead reserve in ms (UCI MoveOverhead)
     pub overhead: u64,
+    /// number of principal variations to report (UCI MultiPV); 1 = normal
+    pub multipv: usize,
+    /// restrict the root search to these moves (UCI `go searchmoves`); empty = all
+    pub searchmoves: Vec<Move>,
+    /// `go infinite` / `go ponder`: search until told to stop (no time/depth cap)
+    pub infinite: bool,
+    /// nodes-as-time conversion: if >0, time/inc/movetime are interpreted in
+    /// units of this many nodes per ms (UCI `nodestime`), for reproducible tests
+    pub nodestime: u64,
+    /// skill cap, 0 (weakest) .. 20 (full strength). <20 weakens move choice.
+    pub skill: i32,
 }
 
 impl Limits {
@@ -28,7 +65,20 @@ impl Limits {
         // overhead default 0: the 20ms reserve measured ≈−5 Elo at STC on an
         // idle box (SPRT timemargin2, 3157 games). Users with laggy GUIs can
         // raise the MoveOverhead UCI option.
-        Limits { time: None, inc: None, movetime: None, depth: None, nodes: None, overhead: 0 }
+        Limits {
+            time: None,
+            inc: None,
+            movestogo: None,
+            movetime: None,
+            depth: None,
+            nodes: None,
+            overhead: 0,
+            multipv: 1,
+            searchmoves: Vec::new(),
+            infinite: false,
+            nodestime: 0,
+            skill: 20,
+        }
     }
 }
 
@@ -76,6 +126,19 @@ pub struct Searcher<'a> {
     /// SMP helper id (0 = main thread). Helpers with odd id search a touch wider
     /// (reduce one less in LMR) so the shared TT collects diverse trees.
     helper_id: usize,
+    /// root moves to exclude from the search (MultiPV: lines already reported
+    /// this iteration; `go searchmoves` complement). Empty = search everything.
+    excluded_root: Vec<Move>,
+    /// emit `wdl W D L` in info lines (UCI_ShowWDL).
+    show_wdl: bool,
+    /// nodes-as-time scale (UCI nodestime): if >0, elapsed "ms" = nodes/this.
+    nodestime: u64,
+    /// shared control for ponderhit (None = no external control, so the original
+    /// timing path is unchanged). On the first observed `ponderhit` the searcher
+    /// rebases `ponder_deadline_ms` to elapsed + budget.
+    ctrl: Option<&'a SearchControl>,
+    /// hard deadline (ms since go-start) installed by ponderhit; MAX until then.
+    ponder_deadline_ms: u64,
 }
 
 impl<'a> Searcher<'a> {
@@ -103,6 +166,11 @@ impl<'a> Searcher<'a> {
             prev_to: [0; MAX_PLY],
             excluded: [MOVE_NONE; MAX_PLY],
             helper_id: 0,
+            excluded_root: Vec::new(),
+            show_wdl: false,
+            nodestime: 0,
+            ctrl: None,
+            ponder_deadline_ms: u64::MAX,
         }
     }
 
@@ -119,7 +187,12 @@ impl<'a> Searcher<'a> {
         self.keys.extend_from_slice(history);
         self.best_root = MOVE_NONE;
 
-        if let Some(mt) = limits.movetime {
+        self.nodestime = limits.nodestime;
+        if limits.infinite {
+            // `go infinite` / `go ponder`: search until stop, no time cap
+            self.soft_limit_ms = u64::MAX;
+            self.hard_limit_ms = u64::MAX;
+        } else if let Some(mt) = limits.movetime {
             self.soft_limit_ms = mt.saturating_sub(limits.overhead);
             self.hard_limit_ms = mt.saturating_sub(limits.overhead / 2);
         } else if let Some(t) = limits.time {
@@ -127,7 +200,10 @@ impl<'a> Searcher<'a> {
             // budget from the clock minus a communication reserve, so process
             // and GUI latency can't flag us in fast games
             let t = t.saturating_sub(limits.overhead).max(1);
-            let alloc = t / 25 + inc / 2;
+            // movestogo (sudden-death-free controls): divide the clock over the
+            // remaining moves; the /25 default models ~25 moves left when absent.
+            let div = limits.movestogo.map(|m| m.clamp(1, 50)).unwrap_or(25);
+            let alloc = t / div + inc / 2;
             self.soft_limit_ms = alloc.min(t.saturating_sub(30));
             self.hard_limit_ms = (3 * alloc).min(t / 3).max(1);
         } else {
@@ -136,6 +212,32 @@ impl<'a> Searcher<'a> {
         }
         self.node_limit = limits.nodes.unwrap_or(u64::MAX);
         self.max_depth = limits.depth.unwrap_or(MAX_PLY as u32 - 1).min(MAX_PLY as u32 - 1);
+
+        // MultiPV: report up to `multipv` distinct root lines per iteration. The
+        // single-PV path (multipv == 1, no searchmoves) runs exactly the original
+        // loop — `excluded_root` stays empty, so negamax's root filter is inert.
+        let multipv = limits.multipv.max(1);
+        // base root exclusion = every legal root move NOT in `searchmoves` (so
+        // negamax searches only the requested set). Empty when searchmoves is.
+        let searchmoves_excl: Vec<Move> = if limits.searchmoves.is_empty() {
+            Vec::new()
+        } else {
+            let mut list = MoveList::new();
+            generate_moves(pos, &mut list);
+            list.iter().filter(|m| !limits.searchmoves.contains(m)).collect()
+        };
+        // skill limiting needs several root lines to choose a weaker one from;
+        // when active it widens the search to a small candidate pool internally.
+        let want_pv = if limits.skill < 20 { multipv.max(4) } else { multipv };
+        let effective_pv = if want_pv == 1 {
+            1
+        } else {
+            // can't report more lines than there are root moves to search
+            let mut list = MoveList::new();
+            generate_moves(pos, &mut list);
+            let roots = list.len.saturating_sub(searchmoves_excl.len());
+            want_pv.min(roots.max(1))
+        };
 
         let mut best = MOVE_NONE;
         let mut prev_score = 0;
@@ -149,53 +251,74 @@ impl<'a> Searcher<'a> {
         // soft-limit multiplier in %, indexed by best-move stability (0 = just
         // changed → search longer; high = stable → stop sooner).
         const TM_FACTOR: [u64; 9] = [135, 118, 104, 95, 88, 83, 79, 76, 73];
+        // best move of each reported PV line (index 0 is the principal line);
+        // also fed to skill-level move selection after the loop.
+        let mut pv_moves: Vec<(Move, Score)> = Vec::new();
         for depth in 1..=self.max_depth {
-            // aspiration window around the previous iteration's score; widen
-            // exponentially on fail until the result lands inside
-            let mut delta = 25;
-            let (mut alpha, mut beta) = if depth >= 4 {
-                ((prev_score - delta).max(-MATE), (prev_score + delta).min(MATE))
-            } else {
-                (-MATE, MATE)
-            };
-            let score = loop {
-                let s = self.negamax(pos, depth, alpha, beta, 0, false);
-                if self.stopped {
-                    break s;
-                }
-                if s <= alpha {
-                    beta = (alpha + beta) / 2;
-                    alpha = (s - delta).max(-MATE);
-                } else if s >= beta {
-                    beta = (s + delta).min(MATE);
+            pv_moves.clear();
+            for pv in 0..effective_pv {
+                // exclude the searchmoves complement plus any line already taken
+                // this iteration, so each PV reports a distinct best move
+                self.excluded_root = searchmoves_excl.clone();
+                self.excluded_root.extend(pv_moves.iter().map(|(m, _)| *m));
+                // aspiration window around the previous iteration's score; widen
+                // exponentially on fail until the result lands inside. Only the
+                // principal line keeps a tight window across iterations.
+                let center = if pv == 0 { prev_score } else { self.root_score };
+                let mut delta = 25;
+                let (mut alpha, mut beta) = if depth >= 4 {
+                    ((center - delta).max(-MATE), (center + delta).min(MATE))
                 } else {
-                    break s;
+                    (-MATE, MATE)
+                };
+                let score = loop {
+                    let s = self.negamax(pos, depth, alpha, beta, 0, false);
+                    if self.stopped {
+                        break s;
+                    }
+                    if s <= alpha {
+                        beta = (alpha + beta) / 2;
+                        alpha = (s - delta).max(-MATE);
+                    } else if s >= beta {
+                        beta = (s + delta).min(MATE);
+                    } else {
+                        break s;
+                    }
+                    delta *= 2;
+                };
+                if self.stopped {
+                    break;
                 }
-                delta *= 2;
-            };
+                let line_best = self.best_root;
+                pv_moves.push((line_best, score));
+                if pv == 0 {
+                    prev_score = score;
+                    self.root_score = score;
+                    best = line_best;
+                }
+                let ms = self.elapsed_ms();
+                let nps = if ms > 0 { self.nodes * 1000 / ms } else { 0 };
+                // only report the lines the user asked for; extra lines searched
+                // purely to feed skill-level selection stay internal.
+                if !self.silent && pv < multipv {
+                    self.print_info(depth, pv + 1, score, nps, ms, line_best, pos, multipv);
+                }
+            }
+            self.excluded_root.clear();
             if self.stopped {
                 break;
             }
-            prev_score = score;
-            self.root_score = score;
-            best = self.best_root;
             stability = if best == prev_best { (stability + 1).min(8) } else { 0 };
             prev_best = best;
-            let ms = self.start.elapsed().as_millis() as u64;
-            let nps = if ms > 0 { self.nodes * 1000 / ms } else { 0 };
-            if !self.silent {
-                crate::send!(
-                    "info depth {depth} score {} nodes {} nps {nps} time {ms} pv {best}",
-                    format_score(score),
-                    self.nodes
-                );
-            }
+            let ms = self.elapsed_ms();
             let eff_soft = if stability_tm {
                 self.soft_limit_ms.saturating_mul(TM_FACTOR[stability]) / 100
             } else {
                 self.soft_limit_ms
             };
-            if ms >= eff_soft {
+            // a ponderhit-installed deadline also ends the deepening between
+            // iterations (MAX when not pondering, so play is unchanged)
+            if ms >= eff_soft || ms >= self.ponder_deadline_ms {
                 break;
             }
         }
@@ -207,7 +330,89 @@ impl<'a> Searcher<'a> {
                 best = list.moves[0];
             }
         }
+        // skill-level weakening: pick a deliberately suboptimal root move from
+        // the reported lines. Full strength (skill 20) always returns `best`.
+        if limits.skill < 20 && pv_moves.len() > 1 {
+            best = self.pick_skill_move(&pv_moves, limits.skill);
+        }
         best
+    }
+
+    /// Emit one `info` line for a (depth, multipv) result. Single-PV mode omits
+    /// the `multipv` field to keep the original output byte-for-byte; MultiPV
+    /// mode includes it (GUIs require it to disambiguate lines). `wdl` is added
+    /// when UCI_ShowWDL is on.
+    #[allow(clippy::too_many_arguments)]
+    fn print_info(
+        &self,
+        depth: u32,
+        multipv: usize,
+        score: Score,
+        nps: u64,
+        ms: u64,
+        best: Move,
+        pos: &Position,
+        user_multipv: usize,
+    ) {
+        let wdl = if self.show_wdl {
+            let material = eval::nonking_material(pos);
+            let (w, d, l) = eval::wdl(score.clamp(-MATE_BOUND, MATE_BOUND), material);
+            format!(" wdl {w} {d} {l}")
+        } else {
+            String::new()
+        };
+        if user_multipv == 1 {
+            crate::send!(
+                "info depth {depth} score {}{wdl} nodes {} nps {nps} time {ms} pv {best}",
+                format_score(score),
+                self.nodes
+            );
+        } else {
+            crate::send!(
+                "info depth {depth} multipv {multipv} score {}{wdl} nodes {} nps {nps} time {ms} pv {best}",
+                format_score(score),
+                self.nodes
+            );
+        }
+    }
+
+    /// Skill-level move choice: at full strength return the top line; below it,
+    /// allow a weaker line through with probability that grows as skill drops.
+    /// Uses a cheap deterministic-but-position-varying pick (node count + key) so
+    /// it needs no RNG and stays reproducible for a given position+nodes.
+    fn pick_skill_move(&self, lines: &[(Move, Score)], skill: i32) -> Move {
+        // weakness in [0,1]: 0 at skill 20, ~1 at skill 0
+        let weak = ((20 - skill).max(0) as f64) / 20.0;
+        // max centipawns we're willing to throw away, scaling with weakness
+        let max_drop = (weak * weak * 700.0) as Score;
+        let top = lines[0].1;
+        // candidate lines within `max_drop` of the best score
+        let mut cand: Vec<Move> = lines
+            .iter()
+            .filter(|(_, s)| top - *s <= max_drop)
+            .map(|(m, _)| *m)
+            .collect();
+        if cand.is_empty() {
+            return lines[0].0;
+        }
+        // deterministic pseudo-random index from node count + position-ish bits;
+        // weaker skill biases toward later (worse) candidates.
+        let r = (self.nodes ^ (self.nodes >> 7) ^ 0x9E37_79B9_7F4A_7C15) as usize;
+        let bias = (weak * (cand.len() - 1) as f64) as usize;
+        let idx = (r % cand.len()).max(bias.min(cand.len() - 1));
+        cand.swap_remove(idx.min(cand.len() - 1))
+    }
+
+    /// Elapsed time in ms. With `nodestime` set (UCI nodes-as-time mode), time
+    /// is derived from the node count instead of the wall clock, so searches are
+    /// reproducible regardless of machine speed.
+    #[inline(always)]
+    fn elapsed_ms(&self) -> u64 {
+        if self.nodestime > 0 {
+            self.nodes / self.nodestime
+        } else {
+            self.start.elapsed().as_millis() as u64
+        }
     }
 
     fn check_limits(&mut self) {
@@ -220,9 +425,23 @@ impl<'a> Searcher<'a> {
             self.stopped = true;
             self.shared_stop.store(true, Ordering::Relaxed);
         }
-        if self.nodes % 2048 == 0 && self.start.elapsed().as_millis() as u64 >= self.hard_limit_ms {
-            self.stopped = true;
-            self.shared_stop.store(true, Ordering::Relaxed);
+        // in nodes-as-time mode the clock advances per node, so check every node
+        if self.nodestime > 0 || self.nodes % 2048 == 0 {
+            let ms = self.elapsed_ms();
+            // on the first observed ponderhit, rebase the deadline to now+budget
+            // so the time budget runs from the hit, not from the free pondering
+            if self.ponder_deadline_ms == u64::MAX {
+                if let Some(c) = self.ctrl {
+                    if c.ponderhit.load(Ordering::Relaxed) {
+                        let budget = c.ponder_budget_ms.load(Ordering::Relaxed);
+                        self.ponder_deadline_ms = ms.saturating_add(budget);
+                    }
+                }
+            }
+            if ms >= self.hard_limit_ms || ms >= self.ponder_deadline_ms {
+                self.stopped = true;
+                self.shared_stop.store(true, Ordering::Relaxed);
+            }
         }
     }
 
@@ -389,6 +608,13 @@ impl<'a> Searcher<'a> {
         self.keys.push(pos.key);
         for mv in list.iter() {
             if mv == excluded {
+                continue;
+            }
+            // root-move filtering for MultiPV / `go searchmoves`: skip lines
+            // already reported this iteration (and, if a searchmoves set is in
+            // force, any move outside it). Only at the root, and only when a
+            // filter is active, so the single-PV search path is unchanged.
+            if ply == 0 && !self.excluded_root.is_empty() && self.excluded_root.contains(&mv) {
                 continue;
             }
             move_count += 1;
@@ -667,42 +893,61 @@ impl<'a> Searcher<'a> {
 
 /// Lazy SMP: run `threads` searchers sharing the lockless TT. The main thread
 /// drives time control + reporting; helpers search to no limit until the shared
-/// stop flips, seeding the TT so the main search goes deeper. Returns the main
-/// thread's move. The M1 benchmark runs 8 threads — a 1-thread Razor is crippled
-/// there, so this is the biggest M1 lever. Honors the UCI `Threads` option.
-pub fn search_threaded(
+/// stop flips, seeding the TT so the main search goes deeper. The M1 benchmark
+/// runs 8 threads — a 1-thread Razor is crippled there, so this is the biggest
+/// M1 lever. Honors the UCI `Threads` option.
+///
+/// Takes an external `SearchControl` (for stop / ponderhit from the UCI loop)
+/// and a `show_wdl` flag. Returns `(best_move, ponder_move)`; the ponder move is
+/// the TT's reply to `best` (MOVE_NONE if none), for `bestmove X ponder Y`.
+pub fn search_with_control(
     tt: &Tt,
     threads: usize,
     pos: &Position,
     limits: &Limits,
     history: &[u64],
     silent: bool,
-) -> Move {
+    ctrl: &SearchControl,
+    show_wdl: bool,
+) -> (Move, Move) {
     let n = threads.max(1);
-    let stop = AtomicBool::new(false);
-    if n == 1 {
-        let mut s = Searcher::new(tt, &stop);
+    let best = if n == 1 {
+        let mut s = Searcher::new(tt, &ctrl.stop);
         s.silent = silent;
-        return s.go(pos, limits, history);
-    }
-    let stop_ref = &stop;
-    std::thread::scope(|scope| {
-        for i in 1..n {
-            scope.spawn(move || {
-                let mut s = Searcher::new(tt, stop_ref);
-                s.silent = true;
-                s.helper_id = i;
-                let mut hl = Limits::infinite();
-                hl.depth = Some(MAX_PLY as u32 - 1);
-                s.go(pos, &hl, history);
-            });
-        }
-        let mut main = Searcher::new(tt, &stop);
-        main.silent = silent;
-        let best = main.go(pos, limits, history);
-        stop.store(true, Ordering::Relaxed); // time up → release helpers
-        best
-    })
+        s.show_wdl = show_wdl;
+        s.ctrl = Some(ctrl);
+        s.go(pos, limits, history)
+    } else {
+        std::thread::scope(|scope| {
+            for i in 1..n {
+                scope.spawn(move || {
+                    let mut s = Searcher::new(tt, &ctrl.stop);
+                    s.silent = true;
+                    s.helper_id = i;
+                    s.ctrl = Some(ctrl);
+                    let mut hl = Limits::infinite();
+                    hl.depth = Some(MAX_PLY as u32 - 1);
+                    s.go(pos, &hl, history);
+                });
+            }
+            let mut main = Searcher::new(tt, &ctrl.stop);
+            main.silent = silent;
+            main.show_wdl = show_wdl;
+            main.ctrl = Some(ctrl);
+            let best = main.go(pos, limits, history);
+            ctrl.stop.store(true, Ordering::Relaxed); // time up → release helpers
+            best
+        })
+    };
+    // ponder move: the TT's best reply to our chosen move (the position after
+    // `best`). Honest — it's the move we actually expect, from the same search.
+    let ponder = if best != MOVE_NONE {
+        let child = pos.make(best);
+        tt.probe_move(child.key)
+    } else {
+        MOVE_NONE
+    };
+    (best, ponder)
 }
 
 /// Late-move-reduction amounts indexed by [depth][move_count], capped at 63.

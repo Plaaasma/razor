@@ -18,6 +18,7 @@ use crate::bitboard::BitIter;
 use crate::eval::Score;
 use crate::position::Position;
 use crate::types::{Color, PieceType, Square};
+use std::sync::Mutex;
 
 const HIDDEN: usize = 768;
 const QA: i32 = 255;
@@ -39,13 +40,46 @@ fn rd_i16(bytes: &[u8], at: &mut usize) -> i16 {
     v
 }
 
+/// UCI `EvalFile` override path. Set (before the first eval) by the UCI loop;
+/// `load()` reads an external .nnue from here in preference to `RAZOR_NET` and
+/// the embedded net. The net is initialized once (OnceLock) on first eval, and
+/// UCI sets options before the first `go`, so an EvalFile set at launch takes
+/// effect. Unset → embedded net, so bench is unchanged.
+static EVAL_FILE: Mutex<Option<String>> = Mutex::new(None);
+
+/// Point the NNUE loader at an external net file (UCI `EvalFile`). Only effective
+/// if called before the first evaluation, since the net loads once and is then
+/// fixed for the process. Returns false if the file can't be read.
+pub fn set_eval_file(path: &str) -> bool {
+    if path.is_empty() || path.eq_ignore_ascii_case("<empty>") {
+        *EVAL_FILE.lock().unwrap() = None;
+        return true;
+    }
+    if std::fs::metadata(path).is_err() {
+        return false;
+    }
+    *EVAL_FILE.lock().unwrap() = Some(path.to_string());
+    true
+}
+
+/// Whether the net has already been initialized (so EvalFile changes after this
+/// point won't take effect — the UCI loop warns when that happens).
+pub fn net_loaded() -> bool {
+    NET.get().is_some()
+}
+
 fn load() -> Network {
-    // Runtime net override for the multigen datagen loop / rented farm: if
-    // RAZOR_NET names a readable file, use it; otherwise the embedded net. Lets
-    // each generation datagen with its new net without recompiling. When unset,
-    // behaviour (and bench) is identical to the embedded build.
+    // Runtime net override: the UCI `EvalFile` option (via set_eval_file) wins,
+    // then the RAZOR_NET env var (multigen datagen loop / rented farm), else the
+    // embedded net. Lets each generation datagen with its new net without
+    // recompiling. When neither is set, behaviour (and bench) is identical to
+    // the embedded build.
     let owned;
-    let bytes: &[u8] = match std::env::var("RAZOR_NET").ok().and_then(|p| std::fs::read(p).ok()) {
+    let eval_file = EVAL_FILE.lock().unwrap().clone();
+    let from_path = eval_file
+        .and_then(|p| std::fs::read(p).ok())
+        .or_else(|| std::env::var("RAZOR_NET").ok().and_then(|p| std::fs::read(p).ok()));
+    let bytes: &[u8] = match from_path {
         Some(b) => {
             owned = b;
             &owned

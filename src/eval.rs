@@ -34,6 +34,41 @@ pub fn evaluate(pos: &Position) -> Score {
 
 pub const PIECE_VALUE: [Score; 6] = [100, 320, 330, 500, 900, 0];
 
+/// Win/draw/loss probabilities in per-mille (each 0..1000, summing to 1000),
+/// for the UCI `info ... wdl W D L` field (UCI_ShowWDL). Stockfish fits a
+/// material-dependent logistic to game outcomes; Razor isn't fitted to that
+/// dataset, so this is a reasonable model rather than a calibrated one.
+///
+/// Like Stockfish's, it's a pair of logistics: W is the probability the eval is
+/// "winning", L the probability it's "losing", and the draw band is whatever
+/// sits between. The 50% point of each sits at +/- `anchor` cp (you need a real
+/// edge to be winning), which gives a wide draw band near equality; `scale`
+/// (the logistic width) grows with material, so the same eval is more decisive
+/// in a thin endgame than a piece-heavy middlegame. `cp` is side-to-move
+/// relative; `material` is the summed non-king piece values of both sides.
+pub fn wdl(cp: Score, material: Score) -> (i32, i32, i32) {
+    let m = (material as f64 / 7800.0).clamp(0.0, 1.0);
+    let scale = 110.0 + 130.0 * m; // logistic width, cp
+    let anchor = 100.0 + 90.0 * m; // half-width of the draw band, cp
+    let logistic = |v: f64| 1000.0 / (1.0 + (-v / scale).exp());
+    let w = (logistic(cp as f64 - anchor) + 0.5) as i32;
+    let l = (logistic(-cp as f64 - anchor) + 0.5) as i32;
+    let w = w.clamp(0, 1000);
+    let l = l.clamp(0, 1000 - w);
+    (w, 1000 - w - l, l)
+}
+
+/// Summed non-king piece values of both sides (centipawns); the WDL model's
+/// material input.
+pub fn nonking_material(pos: &Position) -> Score {
+    let mut m = 0;
+    for pt in [PieceType::Pawn, PieceType::Knight, PieceType::Bishop, PieceType::Rook, PieceType::Queen] {
+        let n = (pos.pieces(Color::White, pt) | pos.pieces(Color::Black, pt)).count_ones() as Score;
+        m += n * PIECE_VALUE[pt.idx()];
+    }
+    m
+}
+
 // PSQTs, white perspective, a1 = index 0. Hand-rolled values reflecting
 // standard principles: center control, development, king shelter, 7th-rank
 // rooks, advanced pawns.
