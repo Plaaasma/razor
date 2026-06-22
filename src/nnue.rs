@@ -781,9 +781,9 @@ fn mutate(
 }
 
 /// Produce the child accumulator after playing `mv`. `pos` is the PARENT
-/// position (before the move); `_child` is `pos.make(mv)` (after, unused — the
-/// threat replay reconstructs the post-move board itself). Maintains both piece
-/// AND threat features incrementally.
+/// position (before the move); the post-move board is reconstructed internally
+/// on the RunBoard, so no child position argument is needed. Maintains both
+/// piece AND threat features incrementally.
 ///
 /// PIECE features use the existing add/remove against the move decomposition.
 /// THREAT features are replayed on a mutable copy `b` of the parent: each
@@ -792,7 +792,7 @@ fn mutate(
 /// primitive ORDER per move type matches Position::make (with castling reordered
 /// to all-removes-before-all-adds so the king's transit and rook relocation see
 /// consistent occupancies for discovered rays).
-pub fn apply(parent: &Accumulator, pos: &Position, _child: &Position, mv: Move) -> Accumulator {
+pub fn apply_lazy(parent: &Accumulator, pos: &Position, mv: Move) -> Accumulator {
     let mut acc = parent.clone();
     let us = pos.stm;
     let them = us.flip();
@@ -893,6 +893,13 @@ pub fn apply(parent: &Accumulator, pos: &Position, _child: &Position, mv: Move) 
     }
     batch.apply_to(&mut acc);
     acc
+}
+
+/// Eager shim keeping the 4-arg signature for the search call sites and the
+/// nnue tests. `_child` is unused (the producer reconstructs the post-move board
+/// on the RunBoard itself); delegates to `apply_lazy`.
+pub fn apply(parent: &Accumulator, pos: &Position, _child: &Position, mv: Move) -> Accumulator {
+    apply_lazy(parent, pos, mv)
 }
 
 /// From-scratch eval (uci `eval`, datagen). Search uses the incremental stack.
