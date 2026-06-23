@@ -463,7 +463,7 @@ impl<'a> Searcher<'a> {
                     "incremental accumulator diverged from refresh at ply {ply}"
                 );
             }
-            self.acc[ply].eval(pos.stm)
+            self.acc[ply].eval(pos)
         } else {
             eval::evaluate_psqt(pos)
         }
@@ -660,8 +660,16 @@ impl<'a> Searcher<'a> {
             self.prev_pt[ply + 1] = pos.piece_on(mv.from()).unwrap().1.idx();
             self.prev_to[ply + 1] = mv.to() as usize;
             if self.use_nnue {
-                let a = crate::nnue::apply(&self.acc[ply], pos, mv);
-                self.acc[ply + 1] = a;
+                #[cfg(not(feature = "cfused"))]
+                {
+                    let a = crate::nnue::apply(&self.acc[ply], pos, &child, mv);
+                    self.acc[ply + 1] = a;
+                }
+                #[cfg(feature = "cfused")]
+                {
+                    let (lo, hi) = self.acc.split_at_mut(ply + 1);
+                    crate::nnue::apply_into(&lo[ply], &mut hi[0], pos, &child, mv);
+                }
             }
             // PVS: full window only for the first move; the rest get a null
             // window probe (late quiets at reduced depth — LMR), re-searched
@@ -816,8 +824,16 @@ impl<'a> Searcher<'a> {
             let child = pos.make(mv);
             self.tt.prefetch(child.key);
             if self.use_nnue {
-                let a = crate::nnue::apply(&self.acc[ply], pos, mv);
-                self.acc[ply + 1] = a;
+                #[cfg(not(feature = "cfused"))]
+                {
+                    let a = crate::nnue::apply(&self.acc[ply], pos, &child, mv);
+                    self.acc[ply + 1] = a;
+                }
+                #[cfg(feature = "cfused")]
+                {
+                    let (lo, hi) = self.acc.split_at_mut(ply + 1);
+                    crate::nnue::apply_into(&lo[ply], &mut hi[0], pos, &child, mv);
+                }
             }
             let score = -self.qsearch(&child, -beta, -alpha, ply + 1);
             if self.stopped {
