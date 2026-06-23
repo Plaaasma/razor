@@ -381,12 +381,49 @@ impl<'a> Searcher<'a> {
         let sd = self.seldepth;
         let hashfull = self.tt.hashfull();
         let tbhits = self.tbhits;
-        let pv = pos.move_uci(best);
+        let pv = self.build_pv(pos, best);
         crate::send!(
             "info depth {depth} seldepth {sd} multipv {multipv} score {}{wdl} nodes {} nps {nps} hashfull {hashfull} tbhits {tbhits} time {ms} pv {pv}",
             format_score(score),
             self.nodes
         );
+    }
+
+    /// Assemble a multi-move PV for the info line by walking the TT from the root,
+    /// following stored best moves. Each step is legality-checked (a TT hash
+    /// collision can store a move illegal in the current position); the line stops
+    /// on a miss, an illegal move, a repetition, or MAX_PLY. Cheap — runs once per
+    /// reported iteration, not per node. Previously only the first move was shown,
+    /// which made a correctly-found mate look incomplete.
+    fn build_pv(&self, root: &Position, first: Move) -> String {
+        let mut out = String::new();
+        let mut pos = *root;
+        let mut mv = first;
+        let mut keys: Vec<u64> = Vec::with_capacity(MAX_PLY);
+        for _ in 0..MAX_PLY {
+            if mv == MOVE_NONE {
+                break;
+            }
+            let mut list = MoveList::new();
+            generate_moves(&pos, &mut list);
+            if !list.iter().any(|m| m == mv) {
+                break; // TT collision: move not legal here
+            }
+            if !out.is_empty() {
+                out.push(' ');
+            }
+            out.push_str(&pos.move_uci(mv));
+            pos = pos.make(mv);
+            if keys.contains(&pos.key) {
+                break; // repetition guard
+            }
+            keys.push(pos.key);
+            match self.tt.probe(pos.key) {
+                Some(e) if e.mv != MOVE_NONE.0 => mv = Move(e.mv),
+                _ => break,
+            }
+        }
+        out
     }
 
     /// Skill-level move choice: at full strength return the top line; below it,
@@ -538,6 +575,22 @@ impl<'a> Searcher<'a> {
                         _ => DRAW,
                     };
                 }
+            }
+        }
+
+        // Mate-distance pruning (Stockfish search Step 3): clamp the window to the
+        // best/worst mate still reachable at this ply — alpha can be no worse than
+        // "mated now" (-MATE+ply), beta no better than "mate next ply" (MATE-ply-1).
+        // Outside the mate band this is a no-op; inside it, branches that cannot
+        // beat an already-found mate cut off instantly, which kills the post-mate
+        // node blow-up (a found mate was otherwise re-searched every iteration,
+        // starving depth in fixed-time play). Root keeps its full alpha so it can
+        // always choose and report a move.
+        let beta = if ply > 0 { beta.min(MATE - ply as Score - 1) } else { beta };
+        if ply > 0 {
+            alpha = alpha.max(-MATE + ply as Score);
+            if alpha >= beta {
+                return alpha;
             }
         }
 
