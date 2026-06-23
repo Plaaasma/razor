@@ -312,8 +312,15 @@ impl Uci {
             }
             "syzygypath" => {
                 self.syzygy_path = value.trim().to_string();
-                if !self.syzygy_path.is_empty() && !self.syzygy_path.eq_ignore_ascii_case("<empty>") {
-                    self.send("info string SyzygyPath accepted but tablebases are not supported; ignoring");
+                let max = crate::syzygy::init(&self.syzygy_path);
+                if max > 0 {
+                    self.send(&format!(
+                        "info string Syzygy tablebases loaded (up to {max}-man)"
+                    ));
+                } else if !self.syzygy_path.is_empty()
+                    && !self.syzygy_path.eq_ignore_ascii_case("<empty>")
+                {
+                    self.send("info string SyzygyPath set but no tablebases found there");
                 }
             }
             "syzygyprobedepth" => {

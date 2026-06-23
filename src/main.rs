@@ -8,6 +8,7 @@ mod perft;
 mod position;
 mod search;
 mod see;
+mod syzygy;
 mod sfnnue;
 mod tt;
 mod tune;

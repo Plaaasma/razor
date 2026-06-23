@@ -1,9 +1,13 @@
 [package]
 name = "razor"
-version = "0.15.0"
+version = "0.16.0"
 edition = "2024"
 
 [dependencies]
+# Syzygy endgame tablebases. Razor is otherwise zero-dependency; these are the
+# one accepted exception (a correct .rtbw/.rtbz decoder is not worth hand-porting).
+shakmaty = "0.30"
+shakmaty-syzygy = "0.28"
 
 [features]
 default = ["fused", "cfused"]

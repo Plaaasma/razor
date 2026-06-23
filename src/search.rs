@@ -84,8 +84,16 @@ impl Limits {
 
 pub const MAX_PLY: usize = 128;
 
+/// Score for a tablebase win at the probing node, before the ply discount. Sits
+/// just below the mate band (`MATE_BOUND`) so a real mate is always preferred,
+/// and above any normal eval, so a TB-won line beats a merely good one. A TB win
+/// scores `TB_WIN - ply` (faster wins preferred); a TB loss `-TB_WIN + ply`.
+pub const TB_WIN: Score = MATE_BOUND - MAX_PLY as Score - 1;
+
 pub struct Searcher<'a> {
     pub nodes: u64,
+    /// Syzygy tablebase hits this search (for `info tbhits`).
+    tbhits: u64,
     /// deepest ply reached this search (selective depth, for `info seldepth`)
     seldepth: u32,
     tt: &'a Tt,
@@ -147,6 +155,7 @@ impl<'a> Searcher<'a> {
     pub fn new(tt: &'a Tt, shared_stop: &'a AtomicBool) -> Searcher<'a> {
         Searcher {
             nodes: 0,
+            tbhits: 0,
             seldepth: 0,
             tt,
             shared_stop,
@@ -185,6 +194,7 @@ impl<'a> Searcher<'a> {
         }
         self.start = Instant::now();
         self.nodes = 0;
+        self.tbhits = 0;
         self.seldepth = 0;
         self.stopped = false;
         self.keys.clear();
@@ -370,9 +380,10 @@ impl<'a> Searcher<'a> {
         // strict GUI parsers see a stable schema). tbhits is 0 (no tablebases yet).
         let sd = self.seldepth;
         let hashfull = self.tt.hashfull();
+        let tbhits = self.tbhits;
         let pv = pos.move_uci(best);
         crate::send!(
-            "info depth {depth} seldepth {sd} multipv {multipv} score {}{wdl} nodes {} nps {nps} hashfull {hashfull} tbhits 0 time {ms} pv {pv}",
+            "info depth {depth} seldepth {sd} multipv {multipv} score {}{wdl} nodes {} nps {nps} hashfull {hashfull} tbhits {tbhits} time {ms} pv {pv}",
             format_score(score),
             self.nodes
         );
@@ -510,6 +521,24 @@ impl<'a> Searcher<'a> {
                 || pos.insufficient_material())
         {
             return DRAW;
+        }
+
+        // Syzygy tablebase probe. Only at zeroing positions (halfmove clock 0)
+        // with no castling rights, so probe_wdl_after_zeroing is exact; cheap
+        // field checks gate before the atomic load + popcount. A hit is a leaf:
+        // the WDL is exact, scored by ply so faster wins / slower losses win.
+        if ply > 0 && pos.halfmove == 0 && pos.castling == 0 {
+            let tb_max = crate::syzygy::max_pieces();
+            if tb_max > 0 && pos.occupied().count_ones() as usize <= tb_max {
+                if let Some(wdl) = crate::syzygy::probe_wdl(pos) {
+                    self.tbhits += 1;
+                    return match wdl {
+                        1 => TB_WIN - ply as Score,
+                        -1 => -TB_WIN + ply as Score,
+                        _ => DRAW,
+                    };
+                }
+            }
         }
 
         // consume this ply's excluded move (set by a singular verification search)
@@ -780,6 +809,21 @@ impl<'a> Searcher<'a> {
         }
         if pos.insufficient_material() {
             return DRAW;
+        }
+        // Syzygy probe at the leaf (same gating as negamax: exact only at a
+        // zeroing position with no castling rights).
+        if pos.halfmove == 0 && pos.castling == 0 {
+            let tb_max = crate::syzygy::max_pieces();
+            if tb_max > 0 && pos.occupied().count_ones() as usize <= tb_max {
+                if let Some(wdl) = crate::syzygy::probe_wdl(pos) {
+                    self.tbhits += 1;
+                    return match wdl {
+                        1 => TB_WIN - ply as Score,
+                        -1 => -TB_WIN + ply as Score,
+                        _ => DRAW,
+                    };
+                }
+            }
         }
         if ply >= MAX_PLY - 1 {
             return self.eval(pos, ply);
