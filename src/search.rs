@@ -86,6 +86,8 @@ pub const MAX_PLY: usize = 128;
 
 pub struct Searcher<'a> {
     pub nodes: u64,
+    /// deepest ply reached this search (selective depth, for `info seldepth`)
+    seldepth: u32,
     tt: &'a Tt,
     start: Instant,
     soft_limit_ms: u64,
@@ -145,6 +147,7 @@ impl<'a> Searcher<'a> {
     pub fn new(tt: &'a Tt, shared_stop: &'a AtomicBool) -> Searcher<'a> {
         Searcher {
             nodes: 0,
+            seldepth: 0,
             tt,
             shared_stop,
             start: Instant::now(),
@@ -182,6 +185,7 @@ impl<'a> Searcher<'a> {
         }
         self.start = Instant::now();
         self.nodes = 0;
+        self.seldepth = 0;
         self.stopped = false;
         self.keys.clear();
         self.keys.extend_from_slice(history);
@@ -354,6 +358,7 @@ impl<'a> Searcher<'a> {
         pos: &Position,
         user_multipv: usize,
     ) {
+        let _ = user_multipv;
         let wdl = if self.show_wdl {
             let material = eval::nonking_material(pos);
             let (w, d, l) = eval::wdl(score.clamp(-MATE_BOUND, MATE_BOUND), material);
@@ -361,19 +366,15 @@ impl<'a> Searcher<'a> {
         } else {
             String::new()
         };
-        if user_multipv == 1 {
-            crate::send!(
-                "info depth {depth} score {}{wdl} nodes {} nps {nps} time {ms} pv {best}",
-                format_score(score),
-                self.nodes
-            );
-        } else {
-            crate::send!(
-                "info depth {depth} multipv {multipv} score {}{wdl} nodes {} nps {nps} time {ms} pv {best}",
-                format_score(score),
-                self.nodes
-            );
-        }
+        // Full Stockfish-parity info line (field order + always-present fields so
+        // strict GUI parsers see a stable schema). tbhits is 0 (no tablebases yet).
+        let sd = self.seldepth;
+        let hashfull = self.tt.hashfull();
+        crate::send!(
+            "info depth {depth} seldepth {sd} multipv {multipv} score {}{wdl} nodes {} nps {nps} hashfull {hashfull} tbhits 0 time {ms} pv {best}",
+            format_score(score),
+            self.nodes
+        );
     }
 
     /// Skill-level move choice: at full strength return the top line; below it,
@@ -495,6 +496,7 @@ impl<'a> Searcher<'a> {
         }
 
         self.nodes += 1;
+        self.seldepth = self.seldepth.max(ply as u32 + 1);
         self.check_limits();
         if self.stopped {
             return 0;
@@ -766,6 +768,7 @@ impl<'a> Searcher<'a> {
     /// option in check).
     fn qsearch(&mut self, pos: &Position, mut alpha: Score, beta: Score, ply: usize) -> Score {
         self.nodes += 1;
+        self.seldepth = self.seldepth.max(ply as u32 + 1);
         self.check_limits();
         if self.stopped {
             return 0;

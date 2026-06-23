@@ -42,6 +42,15 @@ pub struct Uci {
     /// UCI_LimitStrength: when on, `skill` is derived from `uci_elo`
     limit_strength: bool,
     uci_elo: i32,
+    // Accepted-but-stubbed options for plug-and-play parity with Stockfish: Razor
+    // doesn't implement these (standard castling only, no tablebases, single-NUMA,
+    // one embedded net) but accepts + stores them so no GUI chokes on `setoption`.
+    chess960: bool,
+    syzygy_path: String,
+    syzygy_probe_depth: u32,
+    syzygy_50_move: bool,
+    syzygy_probe_limit: u32,
+    numa_policy: String,
     /// optional debug log of all UCI I/O (Debug Log File option)
     log: Option<std::fs::File>,
     /// the in-flight search, if any
@@ -54,7 +63,7 @@ impl Uci {
             pos: Position::startpos(),
             history: Vec::new(),
             tt: Arc::new(Tt::new(16)),
-            move_overhead: 0,
+            move_overhead: 10,
             threads: 1,
             multipv: 1,
             show_wdl: false,
@@ -63,6 +72,12 @@ impl Uci {
             skill: 20,
             limit_strength: false,
             uci_elo: 1320,
+            chess960: false,
+            syzygy_path: String::new(),
+            syzygy_probe_depth: 1,
+            syzygy_50_move: true,
+            syzygy_probe_limit: 7,
+            numa_policy: "auto".to_string(),
             log: None,
             running: None,
         }
@@ -119,7 +134,7 @@ impl Uci {
     }
 
     fn cmd_uci(&self) {
-        self.send("id name Razor 0.2.0");
+        self.send(&format!("id name Razor {}", env!("CARGO_PKG_VERSION")));
         self.send("id author Liam");
         // --- options Razor backs with real behaviour ---
         self.send("option name Hash type spin default 16 min 1 max 4096");
@@ -127,13 +142,22 @@ impl Uci {
         self.send("option name Threads type spin default 1 min 1 max 32");
         self.send("option name MultiPV type spin default 1 min 1 max 256");
         self.send("option name Ponder type check default false");
-        self.send("option name Move Overhead type spin default 0 min 0 max 5000");
+        self.send("option name Move Overhead type spin default 10 min 0 max 5000");
         self.send("option name nodestime type spin default 0 min 0 max 10000");
         self.send("option name UCI_ShowWDL type check default false");
         self.send("option name Skill Level type spin default 20 min 0 max 20");
         self.send("option name UCI_LimitStrength type check default false");
         self.send("option name UCI_Elo type spin default 1320 min 1320 max 3190");
         self.send("option name EvalFile type string default <internal>");
+        // SF-parity options accepted for plug-and-play (features not implemented;
+        // accepted + stubbed so no GUI chokes on setoption).
+        self.send("option name EvalFileSmall type string default <empty>");
+        self.send("option name UCI_Chess960 type check default false");
+        self.send("option name NumaPolicy type string default auto");
+        self.send("option name SyzygyPath type string default <empty>");
+        self.send("option name SyzygyProbeDepth type spin default 1 min 1 max 100");
+        self.send("option name Syzygy50MoveRule type check default true");
+        self.send("option name SyzygyProbeLimit type spin default 7 min 0 max 7");
         self.send("option name UseNNUE type check default true");
         // SPSA-tunable search params (see tune.rs)
         self.send("option name lmrbase type spin default 75 min 0 max 300");
@@ -229,6 +253,40 @@ impl Uci {
                     std::fs::OpenOptions::new().create(true).append(true).open(p).ok()
                 };
             }
+            // SF-parity stubs: accepted + stored so GUIs don't choke; features
+            // (960 castling, tablebases, NUMA, small net) are not implemented.
+            "uci_chess960" => {
+                self.chess960 = value.eq_ignore_ascii_case("true");
+                if self.chess960 {
+                    self.send("info string UCI_Chess960 accepted but not supported; using standard castling");
+                }
+            }
+            "syzygypath" => {
+                self.syzygy_path = value.trim().to_string();
+                if !self.syzygy_path.is_empty() && !self.syzygy_path.eq_ignore_ascii_case("<empty>") {
+                    self.send("info string SyzygyPath accepted but tablebases are not supported; ignoring");
+                }
+            }
+            "syzygyprobedepth" => {
+                if let Ok(d) = value.trim().parse::<u32>() {
+                    self.syzygy_probe_depth = d.clamp(1, 100);
+                }
+            }
+            "syzygy50moverule" => {
+                self.syzygy_50_move = value.eq_ignore_ascii_case("true");
+            }
+            "syzygyprobelimit" => {
+                if let Ok(l) = value.trim().parse::<u32>() {
+                    self.syzygy_probe_limit = l.min(7);
+                }
+            }
+            "numapolicy" => {
+                let v = value.trim();
+                self.numa_policy = if v.is_empty() { "auto".to_string() } else { v.to_string() };
+            }
+            "evalfilesmall" => {
+                self.send("info string EvalFileSmall accepted but ignored; Razor uses a single embedded net");
+            }
             _ => {
                 // runtime-tunable search params for SPSA (no-op if id unknown)
                 if let Ok(v) = value.parse::<i32>() {
@@ -277,8 +335,10 @@ impl Uci {
                         pos = pos.make(mv);
                     }
                     None => {
+                        // SF parity: stop applying moves but COMMIT what parsed so
+                        // far (do not abandon the whole position -> board desync).
                         self.send(&format!("info string illegal move {tok}"));
-                        return;
+                        break;
                     }
                 }
             }

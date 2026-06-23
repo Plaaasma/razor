@@ -62,6 +62,18 @@ impl Tt {
         }
     }
 
+    /// TT fill estimate in permille (0..1000), for `info hashfull`. Samples the
+    /// first min(1000, len) slots (Stockfish's approach); a slot is filled iff its
+    /// `data` is non-zero. Read-only atomic loads — never affects search.
+    pub fn hashfull(&self) -> u32 {
+        let n = self.slots.len().min(1000);
+        if n == 0 {
+            return 0;
+        }
+        let filled = self.slots[..n].iter().filter(|s| s.data.load(Ordering::Relaxed) != 0).count();
+        (filled * 1000 / n) as u32
+    }
+
     #[inline(always)]
     fn index(&self, key: u64) -> usize {
         ((key as u128 * self.slots.len() as u128) >> 64) as usize
