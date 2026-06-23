@@ -62,6 +62,7 @@ const NUM_THREAT: usize = 6400; // ENEMY-ONLY attacker-quadrant threat rows (i8)
 const THREAT_OFF: usize = NUM_PIECE; // 12288 (threat rows begin after all bucketed piece rows)
 const NUM_FEAT: usize = NUM_PIECE + NUM_THREAT; // 25088
 const NUM_OUTPUT_BUCKETS: usize = 8; // MaterialCount<8>
+const L2_HEAD: usize = 16; // eq-net deeper-head hidden width (RAZOR_EQH diagnostic)
 const _: () = assert!(NUM_FEAT == NUM_PIECE + NUM_THREAT);
 const QA: i32 = 255;
 const QB: i32 = 64;
@@ -126,6 +127,21 @@ pub struct Network {
     // at eval() by MaterialCount<8>.
     output_weights: Box<[[i16; 2 * HIDDEN]; NUM_OUTPUT_BUCKETS]>,
     output_bias: [i16; NUM_OUTPUT_BUCKETS],
+    /// DIAGNOSTIC: when the net is loaded via the RAZOR_EQH env (the eq-net +
+    /// deeper-head experiment), this carries the multi-layer head and `eval()`
+    /// uses it instead of the single linear `screlu_dot`. None for shipped nets.
+    eqh_head: Option<EqhHead>,
+}
+
+/// eq-net deeper head: hidden[2*HIDDEN] screlu -> l1(->L2_HEAD) screlu -> l2(->8
+/// buckets). l1 weights i8 xQB (saved transposed, out-major), l1b/l2 FLOAT
+/// (faithful to bullet's multi-layer quant; floats avoid bias overflow at the
+/// x255^2 activation scale). Mirrors razor_net_eqh.rs / candidates/nnue-d2.rs.
+struct EqhHead {
+    l1w: Box<[[i8; 2 * HIDDEN]; L2_HEAD]>,
+    l1b: [f32; L2_HEAD],
+    l2w: Box<[[f32; L2_HEAD]; NUM_OUTPUT_BUCKETS]>,
+    l2b: [f32; NUM_OUTPUT_BUCKETS],
 }
 
 fn rd_i16(bytes: &[u8], at: &mut usize) -> i16 {
@@ -134,7 +150,21 @@ fn rd_i16(bytes: &[u8], at: &mut usize) -> i16 {
     v
 }
 
+fn rd_f32(bytes: &[u8], at: &mut usize) -> f32 {
+    let v = f32::from_le_bytes([bytes[*at], bytes[*at + 1], bytes[*at + 2], bytes[*at + 3]]);
+    *at += 4;
+    v
+}
+
 fn load() -> Network {
+    // DIAGNOSTIC: the eq-net + deeper-head experiment. When RAZOR_EQH points at an
+    // eqh net, load it with the multi-layer head and evaluate through it.
+    if let Ok(p) = std::env::var("RAZOR_EQH") {
+        if let Ok(b) = std::fs::read(&p) {
+            eprintln!("nnue: RAZOR_EQH eqh head net loaded from {p}");
+            return load_eqh(&b);
+        }
+    }
     // Runtime net override: the UCI `EvalFile` option (via set_eval_file) wins,
     // then the RAZOR_NET env var (datagen / rented farm), else the embedded net.
     // Unset → embedded net, so bench is unchanged.
@@ -209,7 +239,89 @@ fn load() -> Network {
     for ob in output_bias.iter_mut() {
         *ob = rd_i16(bytes, &mut at);
     }
-    Network { piece_weights, threat_weights, feature_bias, output_weights, output_bias }
+    Network { piece_weights, threat_weights, feature_bias, output_weights, output_bias, eqh_head: None }
+}
+
+/// Read the shared feature-transformer block (split-quant piece i16 / threat i8,
+/// then feature bias) from a net buffer. Identical layout to the shipped loader.
+fn read_ft(
+    bytes: &[u8],
+    at: &mut usize,
+) -> (Box<[[i16; HIDDEN]; NUM_PIECE]>, Box<[[i8; HIDDEN]; NUM_THREAT]>, [i16; HIDDEN]) {
+    let mut piece_weights: Box<[[i16; HIDDEN]; NUM_PIECE]> =
+        vec![[0i16; HIDDEN]; NUM_PIECE].into_boxed_slice().try_into().unwrap();
+    let mut threat_weights: Box<[[i8; HIDDEN]; NUM_THREAT]> =
+        vec![[0i8; HIDDEN]; NUM_THREAT].into_boxed_slice().try_into().unwrap();
+    for row in 0..NUM_FEAT {
+        if row < THREAT_OFF {
+            for w in piece_weights[row].iter_mut() {
+                *w = rd_i16(bytes, at);
+            }
+        } else {
+            for w in threat_weights[row - THREAT_OFF].iter_mut() {
+                *w = rd_i16(bytes, at).clamp(-127, 127) as i8;
+            }
+        }
+    }
+    let mut feature_bias = [0i16; HIDDEN];
+    for b in feature_bias.iter_mut() {
+        *b = rd_i16(bytes, at);
+    }
+    (piece_weights, threat_weights, feature_bias)
+}
+
+/// DIAGNOSTIC loader for the eq-net + deeper-head experiment (RAZOR_EQH). Same FT
+/// block as the shipped net, then the multi-layer head: l1w [L2_HEAD][2*HIDDEN]
+/// i8 (out-major, trainer's transpose), l1b [L2_HEAD] f32, l2w
+/// [NUM_OUTPUT_BUCKETS][L2_HEAD] f32 (bucket-major), l2b [NUM_OUTPUT_BUCKETS] f32.
+fn load_eqh(bytes: &[u8]) -> Network {
+    const EXPECT: usize = NUM_FEAT * HIDDEN * 2
+        + HIDDEN * 2
+        + L2_HEAD * 2 * HIDDEN
+        + L2_HEAD * 4
+        + NUM_OUTPUT_BUCKETS * L2_HEAD * 4
+        + NUM_OUTPUT_BUCKETS * 4;
+    assert!(
+        bytes.len() >= EXPECT && bytes.len() < EXPECT + 64,
+        "eqh net byte length {} not in [{EXPECT}, {}+64) — wrong net for the eqh head layout",
+        bytes.len(),
+        EXPECT
+    );
+    let mut at = 0usize;
+    let (piece_weights, threat_weights, feature_bias) = read_ft(bytes, &mut at);
+    let mut l1w: Box<[[i8; 2 * HIDDEN]; L2_HEAD]> =
+        vec![[0i8; 2 * HIDDEN]; L2_HEAD].into_boxed_slice().try_into().unwrap();
+    for row in l1w.iter_mut() {
+        for w in row.iter_mut() {
+            *w = bytes[at] as i8;
+            at += 1;
+        }
+    }
+    let mut l1b = [0f32; L2_HEAD];
+    for b in l1b.iter_mut() {
+        *b = rd_f32(bytes, &mut at);
+    }
+    let mut l2w: Box<[[f32; L2_HEAD]; NUM_OUTPUT_BUCKETS]> =
+        vec![[0f32; L2_HEAD]; NUM_OUTPUT_BUCKETS].into_boxed_slice().try_into().unwrap();
+    for bkt in l2w.iter_mut() {
+        for w in bkt.iter_mut() {
+            *w = rd_f32(bytes, &mut at);
+        }
+    }
+    let mut l2b = [0f32; NUM_OUTPUT_BUCKETS];
+    for b in l2b.iter_mut() {
+        *b = rd_f32(bytes, &mut at);
+    }
+    let output_weights: Box<[[i16; 2 * HIDDEN]; NUM_OUTPUT_BUCKETS]> =
+        vec![[0i16; 2 * HIDDEN]; NUM_OUTPUT_BUCKETS].into_boxed_slice().try_into().unwrap();
+    Network {
+        piece_weights,
+        threat_weights,
+        feature_bias,
+        output_weights,
+        output_bias: [0; NUM_OUTPUT_BUCKETS],
+        eqh_head: Some(EqhHead { l1w, l1b, l2w, l2b }),
+    }
 }
 
 use std::sync::{Mutex, OnceLock};
@@ -493,6 +605,9 @@ impl Accumulator {
         // MaterialCount<8>: divisor = ceil(32/8) = 4 (matches bullet outputs.rs).
         let n = pos.occupied().count_ones() as usize;
         let bkt = ((n - 2) / 4).min(NUM_OUTPUT_BUCKETS - 1);
+        if let Some(h) = &net.eqh_head {
+            return eqh_eval(us, them, h, bkt);
+        }
         let ow = &net.output_weights[bkt];
         // i32 accumulation. At HIDDEN<=768 the sum stays in range and i32 is
         // ~8% faster than i64 (the i64 widening defeats i16 SIMD auto-vec).
@@ -504,6 +619,40 @@ impl Accumulator {
         output /= QA * QB;
         output as Score
     }
+}
+
+/// eq-net deeper-head forward (RAZOR_EQH diagnostic). FT activation = screlu in
+/// the QA^2 domain over the concat us[HIDDEN]++them[HIDDEN]; l1 i8 matmul rescaled
+/// by QA^2*QB + float l1b, screlu; float per-bucket l2; * SCALE -> centipawns.
+/// Mirrors candidates/nnue-d2.rs's head but with a screlu (not pairwise) FT and
+/// output buckets. Scalar (correctness-first); a fast kernel comes only if the
+/// head converts at LTC.
+fn eqh_eval(us: &[i16; HIDDEN], them: &[i16; HIDDEN], h: &EqhHead, bkt: usize) -> Score {
+    let mut hl1 = [0i32; 2 * HIDDEN];
+    for i in 0..HIDDEN {
+        let c = (us[i] as i32).clamp(0, QA);
+        hl1[i] = c * c;
+    }
+    for i in 0..HIDDEN {
+        let c = (them[i] as i32).clamp(0, QA);
+        hl1[HIDDEN + i] = c * c;
+    }
+    let denom = (QA * QA * QB) as f32;
+    let mut cc = [0f32; L2_HEAD];
+    for j in 0..L2_HEAD {
+        let mut acc: i64 = 0;
+        for i in 0..2 * HIDDEN {
+            acc += hl1[i] as i64 * h.l1w[j][i] as i64;
+        }
+        let pre = acc as f32 / denom + h.l1b[j];
+        let c = pre.clamp(0.0, 1.0);
+        cc[j] = c * c;
+    }
+    let mut out = h.l2b[bkt];
+    for j in 0..L2_HEAD {
+        out += cc[j] * h.l2w[bkt][j];
+    }
+    (out * SCALE as f32) as Score
 }
 
 #[inline(always)]
