@@ -503,7 +503,11 @@ impl<'a> Searcher<'a> {
         }
 
         // draws by rule (checked at non-root nodes)
-        if ply > 0 && (pos.halfmove >= 100 || self.is_repetition(pos.key, pos.halfmove)) {
+        if ply > 0
+            && (pos.halfmove >= 100
+                || self.is_repetition(pos.key, pos.halfmove)
+                || pos.insufficient_material())
+        {
             return DRAW;
         }
 
@@ -772,6 +776,9 @@ impl<'a> Searcher<'a> {
         self.check_limits();
         if self.stopped {
             return 0;
+        }
+        if pos.insufficient_material() {
+            return DRAW;
         }
         if ply >= MAX_PLY - 1 {
             return self.eval(pos, ply);

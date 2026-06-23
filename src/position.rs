@@ -55,6 +55,18 @@ impl Position {
         self.piece_bb[pt.idx()] & self.color_bb[c.idx()]
     }
 
+    /// Insufficient material to checkmate (FIDE auto-draw): no pawns/rooks/queens
+    /// and at most one minor on the board total — K vs K, KN vs K, KB vs K.
+    /// Conservative (excludes KNN/KBvKB which can't force mate but aren't auto-draws).
+    #[inline]
+    pub fn insufficient_material(&self) -> bool {
+        // piece_bb idx: 0=P 1=N 2=B 3=R 4=Q
+        self.piece_bb[0] == 0
+            && self.piece_bb[3] == 0
+            && self.piece_bb[4] == 0
+            && (self.piece_bb[1] | self.piece_bb[2]).count_ones() <= 1
+    }
+
     #[inline(always)]
     pub fn king_sq(&self, c: Color) -> Square {
         lsb(self.pieces(c, PieceType::King))

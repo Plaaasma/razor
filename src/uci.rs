@@ -129,6 +129,7 @@ impl Uci {
                 }
                 "fen" => self.send(&self.pos.to_fen()),
                 "eval" => self.send(&crate::eval::evaluate(&self.pos).to_string()),
+                "d" => self.cmd_display(),
                 "quit" => {
                     self.stop_search(true);
                     break;
@@ -176,6 +177,29 @@ impl Uci {
         // Debug Log File last: it's infrastructure, not a play-affecting knob
         self.send("option name Debug Log File type string default ");
         self.send("uciok");
+    }
+
+    /// `d` debug command: print an ASCII board diagram + FEN + key (like Stockfish).
+    fn cmd_display(&self) {
+        let mut out = String::from("\n +---+---+---+---+---+---+---+---+\n");
+        for rank in (0..8u8).rev() {
+            out.push_str(" |");
+            for file in 0..8u8 {
+                let sq = rank * 8 + file;
+                let ch = match self.pos.piece_on(sq) {
+                    Some((c, pt)) => {
+                        let p = b"PNBRQK"[pt.idx()];
+                        if c == Color::White { p as char } else { (p + 32) as char }
+                    }
+                    None => ' ',
+                };
+                out.push_str(&format!(" {ch} |"));
+            }
+            out.push_str(&format!(" {}\n +---+---+---+---+---+---+---+---+\n", rank + 1));
+        }
+        out.push_str("   a   b   c   d   e   f   g   h\n\n");
+        out.push_str(&format!("Fen: {}\nKey: {:016X}", self.pos.to_fen(), self.pos.key));
+        self.send(&out);
     }
 
     fn cmd_setoption(&mut self, line: &str) {
