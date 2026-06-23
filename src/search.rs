@@ -370,8 +370,9 @@ impl<'a> Searcher<'a> {
         // strict GUI parsers see a stable schema). tbhits is 0 (no tablebases yet).
         let sd = self.seldepth;
         let hashfull = self.tt.hashfull();
+        let pv = pos.move_uci(best);
         crate::send!(
-            "info depth {depth} seldepth {sd} multipv {multipv} score {}{wdl} nodes {} nps {nps} hashfull {hashfull} tbhits 0 time {ms} pv {best}",
+            "info depth {depth} seldepth {sd} multipv {multipv} score {}{wdl} nodes {} nps {nps} hashfull {hashfull} tbhits 0 time {ms} pv {pv}",
             format_score(score),
             self.nodes
         );

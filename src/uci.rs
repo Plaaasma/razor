@@ -304,13 +304,11 @@ impl Uci {
                     }
                 }
             }
-            // SF-parity stubs: accepted + stored so GUIs don't choke; features
-            // (960 castling, tablebases, NUMA, small net) are not implemented.
+            // UCI_Chess960 is fully supported; the remaining SF-parity options
+            // (tablebases, NUMA, small net) are accepted-but-stubbed below.
             "uci_chess960" => {
                 self.chess960 = value.eq_ignore_ascii_case("true");
-                if self.chess960 {
-                    self.send("info string UCI_Chess960 accepted but not supported; using standard castling");
-                }
+                self.pos.chess960 = self.chess960;
             }
             "syzygypath" => {
                 self.syzygy_path = value.trim().to_string();
@@ -376,6 +374,8 @@ impl Uci {
         } else {
             return;
         };
+        // propagate 960 mode so move parsing/printing uses king-takes-rook form
+        pos.chess960 = self.chess960;
 
         let mut history = Vec::new();
         if let Some(moves) = moves_part.trim().strip_prefix("moves") {
@@ -522,7 +522,9 @@ impl Uci {
     }
 
     fn emit_bestmove(&mut self, best: Move, ponder: Move) {
+        let best = self.pos.move_uci(best);
         if self.ponder_enabled && ponder != MOVE_NONE {
+            let ponder = self.pos.move_uci(ponder);
             self.send(&format!("bestmove {best} ponder {ponder}"));
         } else {
             self.send(&format!("bestmove {best}"));
@@ -574,5 +576,8 @@ fn ponder_budget(limits: &Limits) -> u64 {
 pub fn find_uci_move(pos: &Position, s: &str) -> Option<Move> {
     let mut list = MoveList::new();
     generate_moves(pos, &mut list);
-    list.iter().find(|mv| mv.to_string() == s)
+    // Accept both the position-aware form (king-takes-rook in 960) and the plain
+    // king-to-square form, so GUIs that send either notation work.
+    list.iter()
+        .find(|mv| pos.move_uci(*mv) == s || mv.to_string() == s)
 }

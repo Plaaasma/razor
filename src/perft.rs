@@ -56,6 +56,15 @@ pub const PERFT_SUITE: &[(&str, u32, u64)] = &[
     ("K1k5/8/P7/8/8/8/8/8 w - - 0 1", 6, 2_217),               // self stalemate
     ("8/k1P5/8/1K6/8/8/8/8 w - - 0 1", 7, 567_584),            // stalemate & checkmate
     ("8/8/2k5/5q2/5n2/8/5K2/8 b - - 0 1", 4, 23_527),          // double check
+    // Chess960 / FRC start positions (counts cross-checked vs Stockfish 18).
+    // Castling generalizes to any king/rook start file; nnbqrkrb is the king<->
+    // rook swap case (king f1, kingside rook g1) and qrkrbbnn has the king
+    // wedged between adjacent rooks.
+    ("nrbqnbkr/pppppppp/8/8/8/8/PPPPPPPP/NRBQNBKR w KQkq - 0 1", 5, 4_072_120),
+    ("qrkrbbnn/pppppppp/8/8/8/8/PPPPPPPP/QRKRBBNN w KQkq - 0 1", 5, 3_781_022),
+    ("bbqnnrkr/pppppppp/8/8/8/8/PPPPPPPP/BBQNNRKR w KQkq - 0 1", 5, 4_975_808),
+    ("nnbqrkrb/pppppppp/8/8/8/8/PPPPPPPP/NNBQRKRB w KQkq - 0 1", 5, 4_678_053),
+    ("bnrbqkrn/pppppppp/8/8/8/8/PPPPPPPP/BNRBQKRN w KQkq - 0 1", 5, 4_722_799),
 ];
 
 /// Run the full suite. Returns true iff every count is exact.

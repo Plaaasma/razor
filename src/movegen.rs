@@ -4,7 +4,7 @@
 //! tricky case).
 
 use crate::bitboard::*;
-use crate::position::{NO_SQUARE, Position};
+use crate::position::{NO_SQUARE, Position, castle_index};
 use crate::types::*;
 
 pub const MAX_MOVES: usize = 256;
@@ -167,38 +167,63 @@ fn gen_impl<const CAPS_ONLY: bool>(pos: &Position, list: &mut MoveList) {
         }
     }
 
-    // --- castling ---
+    // --- castling (Chess960-general: king and rooks may start on any file) ---
     if !CAPS_ONLY && checkers == 0 {
-        let (k_right, q_right, k_path, q_path_empty, q_path_safe, kfrom, kto_k, kto_q) = match us {
-            Color::White => (
-                castling::WK,
-                castling::WQ,
-                bb(5) | bb(6),          // f1, g1 empty + safe
-                bb(1) | bb(2) | bb(3),  // b1, c1, d1 empty
-                bb(2) | bb(3),          // c1, d1 safe
-                4u8, 6u8, 2u8,
-            ),
-            Color::Black => (
-                castling::BK,
-                castling::BQ,
-                bb(61) | bb(62),
-                bb(57) | bb(58) | bb(59),
-                bb(58) | bb(59),
-                60, 62, 58,
-            ),
+        let ksq = pos.king_sq(us);
+        let (kbit, qbit, kto, kr_to, qto, qr_to) = match us {
+            Color::White => (castling::WK, castling::WQ, 6u8, 5u8, 2u8, 3u8),
+            Color::Black => (castling::BK, castling::BQ, 62, 61, 58, 59),
         };
-        if pos.castling & k_right != 0
-            && occ & k_path == 0
-            && BitIter(k_path).all(|sq| pos.attackers_to(sq, them, occ) == 0)
-        {
-            list.push(Move::new(kfrom, kto_k, flag::CASTLE_KING));
+        if pos.castling & kbit != 0 {
+            gen_castle(pos, list, them, occ, ksq,
+                pos.castle_rook[castle_index(us, true)], kto, kr_to, flag::CASTLE_KING);
         }
-        if pos.castling & q_right != 0
-            && occ & q_path_empty == 0
-            && BitIter(q_path_safe).all(|sq| pos.attackers_to(sq, them, occ) == 0)
-        {
-            list.push(Move::new(kfrom, kto_q, flag::CASTLE_QUEEN));
+        if pos.castling & qbit != 0 {
+            gen_castle(pos, list, them, occ, ksq,
+                pos.castle_rook[castle_index(us, false)], qto, qr_to, flag::CASTLE_QUEEN);
         }
+    }
+}
+
+/// Inclusive bitboard of squares between two squares on the same rank.
+#[inline]
+fn span(a: u8, b: u8) -> Bitboard {
+    let (lo, hi) = (a.min(b), a.max(b));
+    let mut m = 0u64;
+    let mut s = lo;
+    while s <= hi {
+        m |= 1u64 << s;
+        s += 1;
+    }
+    m
+}
+
+/// Emit a Chess960-general castling move if legal: every square the king and rook
+/// traverse must be empty (except where the two pieces currently sit), and no
+/// square the king passes through (origin..=target inclusive) may be attacked —
+/// with both movers lifted from the occupancy, so a rook vacating its square
+/// cannot conceal a discovered check on the king. Legal by construction.
+#[inline]
+fn gen_castle(
+    pos: &Position,
+    list: &mut MoveList,
+    them: Color,
+    occ: Bitboard,
+    ksq: u8,
+    rsq: u8,
+    kto: u8,
+    rto: u8,
+    flags: u16,
+) {
+    let movers = bb(ksq) | bb(rsq);
+    let king_path = span(ksq, kto);
+    let rook_path = span(rsq, rto);
+    if (king_path | rook_path) & occ & !movers != 0 {
+        return;
+    }
+    let occ_ns = occ & !movers;
+    if BitIter(king_path).all(|sq| pos.attackers_to(sq, them, occ_ns) == 0) {
+        list.push(Move::new(ksq, kto, flags));
     }
 }
 

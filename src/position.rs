@@ -14,11 +14,47 @@ pub struct Position {
     pub mailbox: [u8; 64],
     pub stm: Color,
     pub castling: u8,
+    /// Rook origin square for each castling right, indexed [WK, WQ, BK, BQ];
+    /// NO_SQUARE if that right is absent. Generalizes castling to Chess960
+    /// (rooks need not start on a/h). Game-constant: never changes mid-game.
+    pub castle_rook: [u8; 4],
+    /// Chess960 (FRC) mode: affects only FEN castling field + UCI move I/O
+    /// format (king-takes-rook). Movegen/make are 960-correct regardless.
+    pub chess960: bool,
     /// En passant target square, or 64 if none.
     pub ep: Square,
     pub halfmove: u8,
     pub fullmove: u16,
     pub key: u64,
+}
+
+/// Castling-right array index for a (color, kingside) pair: WK=0 WQ=1 BK=2 BQ=3.
+#[inline(always)]
+pub const fn castle_index(c: Color, kingside: bool) -> usize {
+    (c.idx() << 1) | (!kingside as usize)
+}
+
+/// Default castling rook for X-FEN KQkq: kingside = highest-file rook beyond the
+/// king on the back rank; queenside = lowest-file rook before the king.
+fn find_castle_rook(pos: &Position, c: Color, kingside: bool) -> Option<Square> {
+    let rank = if c == Color::White { 0u8 } else { 7 };
+    let kf = file_of(pos.king_sq(c));
+    let rooks = pos.pieces(c, PieceType::Rook);
+    let mut found = None;
+    for f in 0..8u8 {
+        let sq = square(f, rank);
+        if rooks & bb(sq) == 0 {
+            continue;
+        }
+        if kingside {
+            if f > kf {
+                found = Some(sq);
+            }
+        } else if f < kf && found.is_none() {
+            found = Some(sq);
+        }
+    }
+    found
 }
 
 pub const NO_SQUARE: Square = 64;
@@ -34,6 +70,8 @@ impl Position {
             mailbox: [EMPTY; 64],
             stm: Color::White,
             castling: 0,
+            castle_rook: [NO_SQUARE; 4],
+            chess960: false,
             ep: NO_SQUARE,
             halfmove: 0,
             fullmove: 1,
@@ -70,6 +108,19 @@ impl Position {
     #[inline(always)]
     pub fn king_sq(&self, c: Color) -> Square {
         lsb(self.pieces(c, PieceType::King))
+    }
+
+    /// UCI string for a move, Chess960-aware: in 960 mode castling prints as
+    /// king-takes-own-rook (e1h1); otherwise standard (e1g1). `castle_rook` is
+    /// game-constant, so the root position can format any castle move in a PV.
+    pub fn move_uci(&self, mv: Move) -> String {
+        if self.chess960 && mv.is_castle() {
+            let c = if rank_of(mv.from()) == 0 { Color::White } else { Color::Black };
+            let kingside = mv.flags() == flag::CASTLE_KING;
+            let rsq = self.castle_rook[castle_index(c, kingside)];
+            return format!("{}{}", square_name(mv.from()), square_name(rsq));
+        }
+        mv.to_string()
     }
 
     #[inline(always)]
@@ -181,15 +232,29 @@ impl Position {
             _ => return Err(format!("bad FEN stm: {fen}")),
         };
 
+        // Castling field, both standard "KQkq" and Chess960 forms (X-FEN KQkq =
+        // outermost rook each side; Shredder-FEN file letters = explicit rook).
         for ch in parts[2].chars() {
-            match ch {
-                'K' => pos.castling |= castling::WK,
-                'Q' => pos.castling |= castling::WQ,
-                'k' => pos.castling |= castling::BK,
-                'q' => pos.castling |= castling::BQ,
-                '-' => {}
+            let (c, rook_sq) = match ch {
+                '-' => continue,
+                'K' => (Color::White, find_castle_rook(&pos, Color::White, true)),
+                'Q' => (Color::White, find_castle_rook(&pos, Color::White, false)),
+                'k' => (Color::Black, find_castle_rook(&pos, Color::Black, true)),
+                'q' => (Color::Black, find_castle_rook(&pos, Color::Black, false)),
+                'A'..='H' => (Color::White, Some(square(ch as u8 - b'A', 0))),
+                'a'..='h' => (Color::Black, Some(square(ch as u8 - b'a', 7))),
                 _ => return Err(format!("bad FEN castling: {fen}")),
+            };
+            let Some(rsq) = rook_sq else {
+                return Err(format!("bad FEN castling (no rook for '{ch}'): {fen}"));
+            };
+            if pos.pieces(c, PieceType::Rook) & bb(rsq) == 0 {
+                return Err(format!("bad FEN castling (no rook on {}): {fen}", square_name(rsq)));
             }
+            let kingside = file_of(rsq) > file_of(pos.king_sq(c));
+            let idx = castle_index(c, kingside);
+            pos.castle_rook[idx] = rsq;
+            pos.castling |= 1u8 << idx;
         }
 
         pos.ep = if parts[3] == "-" {
@@ -261,6 +326,15 @@ impl Position {
         s.push(' ');
         if self.castling == 0 {
             s.push('-');
+        } else if self.chess960 {
+            // Shredder-FEN: file letter of each castling rook (uppercase = white).
+            for idx in 0..4 {
+                if self.castling & (1u8 << idx) == 0 {
+                    continue;
+                }
+                let letter = (b'a' + file_of(self.castle_rook[idx])) as char;
+                s.push(if idx < 2 { letter.to_ascii_uppercase() } else { letter });
+            }
         } else {
             if self.castling & castling::WK != 0 { s.push('K'); }
             if self.castling & castling::WQ != 0 { s.push('Q'); }
@@ -318,15 +392,19 @@ impl Position {
                 }
             }
             flag::CASTLE_KING | flag::CASTLE_QUEEN => {
-                let (rook_from, rook_to) = match (us, mv.flags()) {
-                    (Color::White, flag::CASTLE_KING) => (7u8, 5u8),
-                    (Color::White, _) => (0, 3),
-                    (Color::Black, flag::CASTLE_KING) => (63, 61),
-                    (Color::Black, _) => (56, 59),
+                let kingside = mv.flags() == flag::CASTLE_KING;
+                let rook_from = pos.castle_rook[castle_index(us, kingside)];
+                let rook_to = match (us, kingside) {
+                    (Color::White, true) => 5u8,
+                    (Color::White, false) => 3,
+                    (Color::Black, true) => 61,
+                    (Color::Black, false) => 59,
                 };
+                // Remove both movers before placing either: in Chess960 the king's
+                // target or the rook's target may be the other piece's origin.
                 pos.remove(us, PieceType::King, from);
-                pos.put(us, PieceType::King, to);
                 pos.remove(us, PieceType::Rook, rook_from);
+                pos.put(us, PieceType::King, to);
                 pos.put(us, PieceType::Rook, rook_to);
             }
             flag::EN_PASSANT => {
@@ -354,19 +432,26 @@ impl Position {
             _ => unreachable!(),
         }
 
-        // castling rights: clear when king or rook moves or rook is captured
+        // castling rights: clear when king or rook moves or rook is captured.
+        // Square-based (not a fixed table) so it is correct for Chess960 start
+        // files: a king move drops both of its rights; a rook leaving or being
+        // captured on its origin square drops that one right.
         let old_castling = pos.castling;
-        const RIGHTS_MASK: [u8; 64] = {
-            let mut m = [0xffu8; 64];
-            m[4] = !(castling::WK | castling::WQ);
-            m[0] = !castling::WQ;
-            m[7] = !castling::WK;
-            m[60] = !(castling::BK | castling::BQ);
-            m[56] = !castling::BQ;
-            m[63] = !castling::BK;
-            m
-        };
-        pos.castling &= RIGHTS_MASK[from as usize] & RIGHTS_MASK[to as usize];
+        let mut clear = 0u8;
+        for i in 0..4 {
+            let rs = pos.castle_rook[i];
+            if rs != NO_SQUARE && (from == rs || to == rs) {
+                clear |= 1u8 << i;
+            }
+        }
+        if pt == PieceType::King {
+            clear |= if us == Color::White {
+                castling::WK | castling::WQ
+            } else {
+                castling::BK | castling::BQ
+            };
+        }
+        pos.castling &= !clear;
         if pos.castling != old_castling {
             pos.key ^= zobrist::KEYS.castling[old_castling as usize];
             pos.key ^= zobrist::KEYS.castling[pos.castling as usize];
