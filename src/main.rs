@@ -1,4 +1,5 @@
 mod bitboard;
+mod book;
 mod datagen;
 mod eval;
 mod movegen;

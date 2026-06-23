@@ -51,6 +51,9 @@ pub struct Uci {
     syzygy_50_move: bool,
     syzygy_probe_limit: u32,
     numa_policy: String,
+    /// opening book (Polyglot .bin): play a book move instead of searching
+    own_book: bool,
+    book: Option<crate::book::Book>,
     /// optional debug log of all UCI I/O (Debug Log File option)
     log: Option<std::fs::File>,
     /// the in-flight search, if any
@@ -78,6 +81,8 @@ impl Uci {
             syzygy_50_move: true,
             syzygy_probe_limit: 7,
             numa_policy: "auto".to_string(),
+            own_book: false,
+            book: None,
             log: None,
             running: None,
         }
@@ -149,6 +154,8 @@ impl Uci {
         self.send("option name UCI_LimitStrength type check default false");
         self.send("option name UCI_Elo type spin default 1320 min 1320 max 3190");
         self.send("option name EvalFile type string default <internal>");
+        self.send("option name OwnBook type check default false");
+        self.send("option name BookFile type string default <empty>");
         // SF-parity options accepted for plug-and-play (features not implemented;
         // accepted + stubbed so no GUI chokes on setoption).
         self.send("option name EvalFileSmall type string default <empty>");
@@ -252,6 +259,26 @@ impl Uci {
                 } else {
                     std::fs::OpenOptions::new().create(true).append(true).open(p).ok()
                 };
+            }
+            "ownbook" => {
+                self.own_book = value.eq_ignore_ascii_case("true");
+            }
+            "bookfile" => {
+                let p = value.trim();
+                if p.is_empty() || p.eq_ignore_ascii_case("<empty>") {
+                    self.book = None;
+                } else {
+                    match crate::book::Book::load(p) {
+                        Ok(b) => {
+                            self.send(&format!("info string opening book loaded: {} entries", b.len()));
+                            self.book = Some(b);
+                        }
+                        Err(e) => {
+                            self.book = None;
+                            self.send(&format!("info string BookFile load failed: {e}"));
+                        }
+                    }
+                }
             }
             // SF-parity stubs: accepted + stored so GUIs don't choke; features
             // (960 castling, tablebases, NUMA, small net) are not implemented.
@@ -405,6 +432,17 @@ impl Uci {
         // the classic synchronous loop; only ponder/infinite stay in the
         // background so the loop can read `ponderhit`/`stop`. Read before move.
         let background = limits.infinite;
+
+        // Opening book: on a real (non-analysis) search, play a book move
+        // immediately instead of searching. Disabled during infinite/ponder.
+        if self.own_book && !limits.infinite {
+            if let Some(bk) = &self.book {
+                if let Some(mv) = bk.probe(&self.pos) {
+                    self.send(&format!("bestmove {mv}"));
+                    return;
+                }
+            }
+        }
 
         let ctrl = Arc::new(SearchControl::new());
         let tt = Arc::clone(&self.tt);
