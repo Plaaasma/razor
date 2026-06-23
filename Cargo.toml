@@ -5,6 +5,12 @@ edition = "2024"
 
 [dependencies]
 
+[features]
+default = ["fused", "cfused"]
+fused = []
+cfused = []
+noprefetch = []
+
 [profile.release]
 lto = true
 codegen-units = 1
