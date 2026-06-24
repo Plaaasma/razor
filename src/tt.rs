@@ -1,8 +1,15 @@
 //! Transposition table: fixed-size, multiply-shift indexing, single slot per
-//! index, depth-preferred replacement. LOCKLESS for SMP: each slot is two
-//! AtomicU64 (key^data, data); a probe is valid iff `key ^ data == probe_key`,
-//! which also detects a torn read from a concurrent writer (Hyatt's xor trick).
-//! All access is `&self` so the table can be shared across search threads.
+//! index, depth-preferred replacement. LOCKLESS for SMP: each slot is ONE
+//! AtomicU64, so a load/store is inherently tear-free (no Hyatt xor needed).
+//! Validity uses a 16-bit key-check packed alongside the data; combined with the
+//! index bits this is ~2^-42 false-positive (Stockfish-grade). All access is
+//! `&self` so the table can be shared across search threads.
+//!
+//! Slot layout (one u64): [mv:16 | score:16 | depth:8 | bound:8 | keycheck:16].
+//! A never-written slot is 0; every stored entry has depth>=1 (only negamax
+//! stores, and only at depth>=1), so `data == 0` is an unambiguous empty marker.
+//! At 8 bytes/slot the table holds 2x the entries of the old 16-byte design, so
+//! `hashfull` rises half as fast (matching Stockfish's density at equal Hash MB).
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -24,22 +31,33 @@ pub struct TtEntry {
 }
 
 struct Slot {
-    key: AtomicU64,
     data: AtomicU64,
+}
+
+/// 16-bit key-check. The multiply-shift index is dominated by the high bits of
+/// `key`, so the low 16 bits are ~independent of it — a good disambiguator.
+#[inline(always)]
+fn keycheck(key: u64) -> u16 {
+    key as u16
+}
+
+#[inline(always)]
+fn pack(kc: u16, mv: u16, score: i16, depth: u8, bound: u8) -> u64 {
+    (mv as u64)
+        | ((score as u16 as u64) << 16)
+        | ((depth as u64) << 32)
+        | ((bound as u64) << 40)
+        | ((kc as u64) << 48)
+}
+
+/// Returns (keycheck, mv, score, depth, bound).
+#[inline(always)]
+fn unpack(d: u64) -> (u16, u16, i16, u8, u8) {
+    ((d >> 48) as u16, d as u16, (d >> 16) as u16 as i16, (d >> 32) as u8, (d >> 40) as u8)
 }
 
 pub struct Tt {
     slots: Vec<Slot>,
-}
-
-#[inline(always)]
-fn pack(mv: u16, score: i16, depth: u8, bound: u8) -> u64 {
-    (mv as u64) | ((score as u16 as u64) << 16) | ((depth as u64) << 32) | ((bound as u64) << 40)
-}
-
-#[inline(always)]
-fn unpack(d: u64) -> (u16, i16, u8, u8) {
-    (d as u16, (d >> 16) as u16 as i16, (d >> 32) as u8, (d >> 40) as u8)
 }
 
 impl Tt {
@@ -50,14 +68,13 @@ impl Tt {
     }
 
     pub fn resize(&mut self, mb: usize) {
-        let n = (mb.max(1) * 1024 * 1024 / 16).max(1); // 16 bytes per slot
-        self.slots = (0..n).map(|_| Slot { key: AtomicU64::new(0), data: AtomicU64::new(0) }).collect();
+        let n = (mb.max(1) * 1024 * 1024 / 8).max(1); // 8 bytes per slot
+        self.slots = (0..n).map(|_| Slot { data: AtomicU64::new(0) }).collect();
     }
 
     /// Wipe all entries. `&self` (atomic stores) so it works on a shared table.
     pub fn clear(&self) {
         for s in &self.slots {
-            s.key.store(0, Ordering::Relaxed);
             s.data.store(0, Ordering::Relaxed);
         }
     }
@@ -96,17 +113,16 @@ impl Tt {
 
     #[inline(always)]
     pub fn probe(&self, key: u64) -> Option<TtEntry> {
-        let s = &self.slots[self.index(key)];
-        let k = s.key.load(Ordering::Relaxed);
-        let d = s.data.load(Ordering::Relaxed);
-        // valid + untorn iff the stored key xor data recovers the probe key
-        // (d != 0 rejects the empty slot, whose stored entries always have depth>=1)
-        if d != 0 && k ^ d == key {
-            let (mv, score, depth, bound) = unpack(d);
-            Some(TtEntry { key, mv, score, depth, bound })
-        } else {
-            None
+        let d = self.slots[self.index(key)].data.load(Ordering::Relaxed);
+        // d == 0 is the empty slot (every stored entry has depth>=1, so a written
+        // slot is never all-zero); the keycheck then validates the position.
+        if d != 0 {
+            let (kc, mv, score, depth, bound) = unpack(d);
+            if kc == keycheck(key) {
+                return Some(TtEntry { key, mv, score, depth, bound });
+            }
         }
+        None
     }
 
     #[inline(always)]
@@ -118,13 +134,13 @@ impl Tt {
     }
 
     pub fn store(&self, key: u64, mv: Move, score: Score, depth: u32, bound: u8) {
+        let kc = keycheck(key);
         let s = &self.slots[self.index(key)];
-        let k = s.key.load(Ordering::Relaxed);
         let d = s.data.load(Ordering::Relaxed);
-        let same = d != 0 && k ^ d == key;
+        let same = d != 0 && unpack(d).0 == kc;
         // keep deeper data for the same position unless we bring a new exact bound
         let mv = if same {
-            let (omv, _, odepth, _) = unpack(d);
+            let (_, omv, _, odepth, _) = unpack(d);
             if odepth as u32 > depth && bound != BOUND_EXACT {
                 return;
             }
@@ -133,9 +149,7 @@ impl Tt {
         } else {
             mv
         };
-        let nd = pack(mv.0, score as i16, depth as u8, bound);
-        s.key.store(key ^ nd, Ordering::Relaxed);
-        s.data.store(nd, Ordering::Relaxed);
+        s.data.store(pack(kc, mv.0, score as i16, depth as u8, bound), Ordering::Relaxed);
     }
 }
 
