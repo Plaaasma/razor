@@ -5,8 +5,9 @@
 *.binpack
 *.bin
 *.nnue
-# but DO track the embedded nets — include_bytes needs them to build
+# but DO track the embedded nets + opening book — include_bytes needs them to build
 !nets/*.nnue
+!books/komodo.bin
 config.json
 
 nets/nn-*.nnue
