@@ -219,9 +219,23 @@ pub struct Book {
     entries: Vec<(u64, u16, u16)>,
 }
 
+/// Strong Polyglot opening book baked into the binary (komodo.bin, ~578k entries)
+/// so the engine plays from book out of the box with no external file. The UCI
+/// `BookFile` option overrides it with a user-supplied book.
+const EMBEDDED: &[u8] = include_bytes!("../books/komodo.bin");
+
 impl Book {
     pub fn load(path: &str) -> std::io::Result<Book> {
-        let data = std::fs::read(path)?;
+        Self::from_bytes(&std::fs::read(path)?)
+    }
+
+    /// The opening book baked into the binary.
+    pub fn embedded() -> Book {
+        // include_bytes! pins a valid (16-byte-multiple) book at build time.
+        Self::from_bytes(EMBEDDED).expect("embedded komodo.bin is a valid polyglot book")
+    }
+
+    fn from_bytes(data: &[u8]) -> std::io::Result<Book> {
         if data.len() % 16 != 0 {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,

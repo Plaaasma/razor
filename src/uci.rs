@@ -81,8 +81,11 @@ impl Uci {
             syzygy_50_move: true,
             syzygy_probe_limit: 7,
             numa_policy: "auto".to_string(),
-            own_book: false,
-            book: None,
+            // The strong opening book is baked into the binary and on by default,
+            // so the engine plays from book with no setup. BookFile overrides it;
+            // OwnBook=false disables book play.
+            own_book: true,
+            book: Some(crate::book::Book::embedded()),
             log: None,
             running: None,
         }
@@ -155,8 +158,8 @@ impl Uci {
         self.send("option name UCI_LimitStrength type check default false");
         self.send("option name UCI_Elo type spin default 1320 min 1320 max 3190");
         self.send("option name EvalFile type string default <internal>");
-        self.send("option name OwnBook type check default false");
-        self.send("option name BookFile type string default <empty>");
+        self.send("option name OwnBook type check default true");
+        self.send("option name BookFile type string default <internal>");
         // SF-parity options accepted for plug-and-play (features not implemented;
         // accepted + stubbed so no GUI chokes on setoption).
         self.send("option name EvalFileSmall type string default <empty>");
@@ -289,8 +292,10 @@ impl Uci {
             }
             "bookfile" => {
                 let p = value.trim();
-                if p.is_empty() || p.eq_ignore_ascii_case("<empty>") {
-                    self.book = None;
+                if p.is_empty() || p.eq_ignore_ascii_case("<empty>") || p.eq_ignore_ascii_case("<internal>") {
+                    // revert to the baked-in book (not "no book")
+                    self.book = Some(crate::book::Book::embedded());
+                    self.send("info string using embedded opening book");
                 } else {
                     match crate::book::Book::load(p) {
                         Ok(b) => {
@@ -298,8 +303,9 @@ impl Uci {
                             self.book = Some(b);
                         }
                         Err(e) => {
-                            self.book = None;
-                            self.send(&format!("info string BookFile load failed: {e}"));
+                            // keep the embedded book on a bad path
+                            self.book = Some(crate::book::Book::embedded());
+                            self.send(&format!("info string BookFile load failed: {e}; using embedded book"));
                         }
                     }
                 }

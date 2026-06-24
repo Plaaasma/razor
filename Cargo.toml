@@ -1,6 +1,6 @@
 [package]
 name = "razor"
-version = "0.17.0"
+version = "0.18.0"
 edition = "2024"
 
 [dependencies]
@@ -13,6 +13,10 @@ shakmaty-syzygy = "0.28"
 default = ["fused", "cfused"]
 fused = []
 cfused = []
+# DIAGNOSTIC: widen the NNUE accumulator to 1024 for the SF-class arch experiment.
+# Used only with RAZOR_EQH=<1024 eqh net>; the embedded 768 net is unused in this
+# build (do not run it without RAZOR_EQH set).
+h1024 = []
 noprefetch = []
 
 [profile.release]
